@@ -29,3 +29,17 @@ docker-compose up --build
 ```
 
 Open <http://localhost:8000/docs> for the Swagger UI.
+
+### Running the Telegram bot
+
+The repository includes a minimal Telegram bot that responds to `/start`.
+Set your bot token in the `BOT_TOKEN` environment variable and run the helper
+script:
+
+```bash
+export BOT_TOKEN="your-telegram-token"
+python run_bot.py
+```
+
+After starting the script the bot will begin polling Telegram and will
+reply with `Hello! This is Trainer Bot` when you send the `/start` command.

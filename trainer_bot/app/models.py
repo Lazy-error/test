@@ -54,3 +54,13 @@ class Notification(Base):
     user_id = Column(Integer, nullable=False)
     text = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+class User(Base):
+    __tablename__ = 'users'
+    id = Column(Integer, primary_key=True)
+    telegram_id = Column(Integer, unique=True, nullable=False)
+    first_name = Column(String)
+    last_name = Column(String)
+    username = Column(String)
+    role = Column(String, default='user', nullable=False)
+    refresh_token = Column(String, nullable=True)

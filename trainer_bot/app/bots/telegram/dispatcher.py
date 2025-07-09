@@ -2,7 +2,8 @@ from aiogram import Bot, Dispatcher
 from aiogram.types import Message
 from aiogram.filters import CommandStart, Command
 from datetime import date
-from ...services.db import workouts_db
+from ...services.db import get_session
+from ...models import Workout
 import os
 
 API_TOKEN = os.getenv("BOT_TOKEN", "123456:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi")
@@ -21,9 +22,10 @@ async def help_cmd(message: Message):
 @dp.message(Command("today"))
 async def today_cmd(message: Message):
     today = date.today().isoformat()
-    todays = [w for w in workouts_db.values() if str(w.get("date")) == today]
+    with get_session() as session:
+        todays = session.query(Workout).filter(Workout.date == today).all()
     if todays:
-        text = "Today's workouts:\n" + "\n".join(w["title"] for w in todays)
+        text = "Today's workouts:\n" + "\n".join(w.title for w in todays)
     else:
         text = "No workouts for today."
     await message.answer(text)

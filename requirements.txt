@@ -6,3 +6,4 @@ aiogram
 pytest
 httpx
 APScheduler
+PyJWT

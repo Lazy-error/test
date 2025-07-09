@@ -5,3 +5,8 @@ def test_parse_strength_cell():
     sets = parse_strength_cell("75 kg ×5 ×3")
     assert len(sets) == 3
     assert sets[0] == {"weight": 75.0, "reps": 5, "order": 1}
+
+def test_parse_strength_invalid():
+    import pytest
+    with pytest.raises(ValueError):
+        parse_strength_cell("bad format")

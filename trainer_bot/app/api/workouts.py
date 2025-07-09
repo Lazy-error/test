@@ -1,19 +1,28 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 from typing import List
 
 from ..schemas.workout import WorkoutCreate, Workout
-from ..services.db import workouts_db
+from ..services.db import SessionLocal
+from ..models import Workout as WorkoutModel
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 router = APIRouter(prefix="/workouts", tags=["workouts"])
 
 @router.get("/", response_model=List[Workout])
-async def list_workouts():
-    return list(workouts_db.values())
+def list_workouts(db: Session = Depends(get_db)):
+    return db.query(WorkoutModel).all()
 
 @router.post("/", response_model=Workout)
-async def create_workout(workout: WorkoutCreate):
-    new_id = max(workouts_db.keys(), default=0) + 1
-    data = workout.dict()
-    data["id"] = new_id
-    workouts_db[new_id] = data
-    return data
+def create_workout(workout: WorkoutCreate, db: Session = Depends(get_db)):
+    db_workout = WorkoutModel(**workout.dict())
+    db.add(db_workout)
+    db.commit()
+    db.refresh(db_workout)
+    return db_workout

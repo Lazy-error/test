@@ -1,19 +1,28 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 from typing import List
 
 from ..schemas.athlete import AthleteCreate, Athlete
-from ..services.db import DB, athletes_db
+from ..services.db import SessionLocal
+from ..models import Athlete as AthleteModel
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 router = APIRouter(prefix="/athletes", tags=["athletes"])
 
 @router.get("/", response_model=List[Athlete])
-async def list_athletes():
-    return list(athletes_db.values())
+def list_athletes(db: Session = Depends(get_db)):
+    return db.query(AthleteModel).all()
 
 @router.post("/", response_model=Athlete)
-async def create_athlete(athlete: AthleteCreate):
-    new_id = max(athletes_db.keys(), default=0) + 1
-    data = athlete.dict()
-    data["id"] = new_id
-    athletes_db[new_id] = data
-    return data
+def create_athlete(athlete: AthleteCreate, db: Session = Depends(get_db)):
+    db_athlete = AthleteModel(name=athlete.name)
+    db.add(db_athlete)
+    db.commit()
+    db.refresh(db_athlete)
+    return db_athlete

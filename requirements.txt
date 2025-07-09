@@ -9,4 +9,3 @@ PyJWT
 pytest-cov
 ruff
 APScheduler
-PyJWT

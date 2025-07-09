@@ -5,3 +5,4 @@ pydantic
 aiogram
 pytest
 httpx
+PyJWT

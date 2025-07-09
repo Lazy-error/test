@@ -1,19 +1,20 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 
 from ..schemas.workout import WorkoutCreate, Workout as WorkoutSchema
 from ..services.db import get_session
 from ..models import Workout, Set
+from .auth import get_current_user
 
 router = APIRouter(prefix="/workouts", tags=["workouts"])
 
 @router.get("/", response_model=List[WorkoutSchema])
-async def list_workouts():
+async def list_workouts(user=Depends(get_current_user)):
     with get_session() as session:
         return session.query(Workout).all()
 
 @router.post("/", response_model=WorkoutSchema)
-async def create_workout(workout: WorkoutCreate):
+async def create_workout(workout: WorkoutCreate, user=Depends(get_current_user)):
     with get_session() as session:
         obj = Workout(**workout.model_dump())
         session.add(obj)
@@ -22,7 +23,7 @@ async def create_workout(workout: WorkoutCreate):
         return obj
 
 @router.get("/{workout_id}", response_model=WorkoutSchema)
-async def get_workout(workout_id: int):
+async def get_workout(workout_id: int, user=Depends(get_current_user)):
     with get_session() as session:
         obj = session.get(Workout, workout_id)
         if not obj:
@@ -30,7 +31,7 @@ async def get_workout(workout_id: int):
         return obj
 
 @router.patch("/{workout_id}", response_model=WorkoutSchema)
-async def update_workout(workout_id: int, workout: WorkoutCreate):
+async def update_workout(workout_id: int, workout: WorkoutCreate, user=Depends(get_current_user)):
     with get_session() as session:
         obj = session.get(Workout, workout_id)
         if not obj:
@@ -42,7 +43,7 @@ async def update_workout(workout_id: int, workout: WorkoutCreate):
         return obj
 
 @router.delete("/{workout_id}")
-async def delete_workout(workout_id: int):
+async def delete_workout(workout_id: int, user=Depends(get_current_user)):
     with get_session() as session:
         obj = session.get(Workout, workout_id)
         if obj:
@@ -51,12 +52,12 @@ async def delete_workout(workout_id: int):
     return {"status": "deleted"}
 
 @router.get("/{workout_id}/sets", response_model=List[dict])
-async def workout_sets(workout_id: int):
+async def workout_sets(workout_id: int, user=Depends(get_current_user)):
     with get_session() as session:
         return session.query(Set).filter(Set.workout_id == workout_id).all()
 
 @router.post("/{workout_id}/sets", response_model=dict)
-async def create_workout_set(workout_id: int, set_in: dict):
+async def create_workout_set(workout_id: int, set_in: dict, user=Depends(get_current_user)):
     with get_session() as session:
         obj = Set(workout_id=workout_id, **set_in)
         session.add(obj)

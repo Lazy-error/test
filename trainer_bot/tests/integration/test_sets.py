@@ -1,14 +1,38 @@
+import os
+import hashlib
+import hmac
 from trainer_bot.app.main import app
 from fastapi.testclient import TestClient
 
 client = TestClient(app)
+BOT_TOKEN = "testtoken"
+os.environ["BOT_TOKEN"] = BOT_TOKEN
+
+
+def _telegram_payload(user_id: int = 1):
+    data = {
+        "id": user_id,
+        "first_name": "Test",
+        "auth_date": 1,
+    }
+    secret = hashlib.sha256(BOT_TOKEN.encode()).digest()
+    data_check = "\n".join(f"{k}={v}" for k, v in sorted(data.items()))
+    data["hash"] = hmac.new(secret, data_check.encode(), hashlib.sha256).hexdigest()
+    return data
+
+
+def _auth_headers():
+    res = client.post("/api/v1/auth/telegram", json=_telegram_payload())
+    token = res.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
 
 
 def test_create_set():
+    headers = _auth_headers()
     # create workout first
-    res = client.post("/api/v1/workouts/", json={"athlete_id": 1, "date": "2025-01-01", "type": "strength", "title": "A"})
+    res = client.post("/api/v1/workouts/", json={"athlete_id": 1, "date": "2025-01-01", "type": "strength", "title": "A"}, headers=headers)
     wid = res.json()["id"]
-    res = client.post("/api/v1/sets/", json={"workout_id": wid, "exercise": "Bench", "weight": 50, "reps": 5, "order": 1})
+    res = client.post("/api/v1/sets/", json={"workout_id": wid, "exercise": "Bench", "weight": 50, "reps": 5, "order": 1}, headers=headers)
     assert res.status_code == 200
     data = res.json()
     assert data["workout_id"] == wid

@@ -12,8 +12,8 @@ import datetime
 
 SECRET_KEY = os.getenv("SECRET_KEY", "secret")
 ALGORITHM = "HS256"
-ACCESS_EXPIRE_MIN = 30
-REFRESH_EXPIRE_DAYS = 7
+ACCESS_EXPIRE_MIN = 15
+REFRESH_EXPIRE_DAYS = 30
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 security = HTTPBearer()

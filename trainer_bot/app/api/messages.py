@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from typing import List
 from ..schemas.message import MessageCreate, Message as MessageSchema
 from ..services.db import get_session

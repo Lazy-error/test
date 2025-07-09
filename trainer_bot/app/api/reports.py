@@ -1,5 +1,4 @@
 from fastapi import APIRouter
-from typing import List
 from ..services.db import get_session
 from ..models import Workout
 

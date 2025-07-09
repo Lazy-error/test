@@ -3,7 +3,6 @@ import hmac
 import os
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
 
 from ..schemas.auth import TelegramAuth, TokenPair, RefreshRequest
 from ..services.db import get_session

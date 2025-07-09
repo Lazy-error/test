@@ -1,18 +1,19 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from ..schemas.plan import PlanCreate, Plan as PlanSchema
 from ..services.db import get_session
 from ..models import Plan
+from .auth import get_current_user
 
 router = APIRouter(prefix="/plans", tags=["plans"])
 
 @router.get("/", response_model=List[PlanSchema])
-async def list_plans():
+async def list_plans(user=Depends(get_current_user)):
     with get_session() as session:
         return session.query(Plan).all()
 
 @router.post("/", response_model=PlanSchema)
-async def create_plan(plan: PlanCreate):
+async def create_plan(plan: PlanCreate, user=Depends(get_current_user)):
     with get_session() as session:
         obj = Plan(**plan.model_dump())
         session.add(obj)
@@ -21,7 +22,7 @@ async def create_plan(plan: PlanCreate):
         return obj
 
 @router.get("/{plan_id}", response_model=PlanSchema)
-async def get_plan(plan_id: int):
+async def get_plan(plan_id: int, user=Depends(get_current_user)):
     with get_session() as session:
         obj = session.get(Plan, plan_id)
         if not obj:
@@ -29,7 +30,7 @@ async def get_plan(plan_id: int):
         return obj
 
 @router.patch("/{plan_id}", response_model=PlanSchema)
-async def update_plan(plan_id: int, plan: PlanCreate):
+async def update_plan(plan_id: int, plan: PlanCreate, user=Depends(get_current_user)):
     with get_session() as session:
         obj = session.get(Plan, plan_id)
         if not obj:
@@ -41,7 +42,7 @@ async def update_plan(plan_id: int, plan: PlanCreate):
         return obj
 
 @router.delete("/{plan_id}")
-async def delete_plan(plan_id: int):
+async def delete_plan(plan_id: int, user=Depends(get_current_user)):
     with get_session() as session:
         obj = session.get(Plan, plan_id)
         if obj:

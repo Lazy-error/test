@@ -1,18 +1,21 @@
 from fastapi import APIRouter, HTTPException
 from typing import List
-from ..schemas.message import MessageCreate, Message
-from ..services.db import messages_db
+from ..schemas.message import MessageCreate, Message as MessageSchema
+from ..services.db import get_session
+from ..models import Message
 
 router = APIRouter(prefix="/messages", tags=["messages"])
 
-@router.get("/", response_model=List[Message])
+@router.get("/", response_model=List[MessageSchema])
 async def list_messages():
-    return list(messages_db.values())
+    with get_session() as session:
+        return session.query(Message).all()
 
-@router.post("/", response_model=Message)
+@router.post("/", response_model=MessageSchema)
 async def create_message(msg: MessageCreate):
-    new_id = max(messages_db.keys(), default=0) + 1
-    data = msg.model_dump()
-    data["id"] = new_id
-    messages_db[new_id] = data
-    return data
+    with get_session() as session:
+        obj = Message(**msg.model_dump())
+        session.add(obj)
+        session.commit()
+        session.refresh(obj)
+        return obj

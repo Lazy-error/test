@@ -1,44 +1,56 @@
 from fastapi import APIRouter, HTTPException
 from typing import List
 
-from ..schemas.athlete import AthleteCreate, Athlete
-from ..services.db import athletes_db, workouts_db
+from ..schemas.athlete import AthleteCreate, Athlete as AthleteSchema
+from ..services.db import get_session
+from ..models import Athlete, Workout
 
 router = APIRouter(prefix="/athletes", tags=["athletes"])
 
-@router.get("/", response_model=List[Athlete])
+@router.get("/", response_model=List[AthleteSchema])
 async def list_athletes():
-    return list(athletes_db.values())
+    with get_session() as session:
+        return session.query(Athlete).all()
 
-@router.post("/", response_model=Athlete)
+@router.post("/", response_model=AthleteSchema)
 async def create_athlete(athlete: AthleteCreate):
-    new_id = max(athletes_db.keys(), default=0) + 1
-    data = athlete.model_dump()
-    data["id"] = new_id
-    athletes_db[new_id] = data
-    return data
+    with get_session() as session:
+        obj = Athlete(**athlete.model_dump())
+        session.add(obj)
+        session.commit()
+        session.refresh(obj)
+        return obj
 
-@router.get("/{athlete_id}", response_model=Athlete)
+@router.get("/{athlete_id}", response_model=AthleteSchema)
 async def get_athlete(athlete_id: int):
-    if athlete_id not in athletes_db:
-        raise HTTPException(status_code=404, detail="Not found")
-    return athletes_db[athlete_id]
+    with get_session() as session:
+        obj = session.get(Athlete, athlete_id)
+        if not obj:
+            raise HTTPException(status_code=404, detail="Not found")
+        return obj
 
-@router.patch("/{athlete_id}", response_model=Athlete)
+@router.patch("/{athlete_id}", response_model=AthleteSchema)
 async def update_athlete(athlete_id: int, athlete: AthleteCreate):
-    if athlete_id not in athletes_db:
-        raise HTTPException(status_code=404, detail="Not found")
-    data = athlete.model_dump()
-    data["id"] = athlete_id
-    athletes_db[athlete_id] = data
-    return data
+    with get_session() as session:
+        obj = session.get(Athlete, athlete_id)
+        if not obj:
+            raise HTTPException(status_code=404, detail="Not found")
+        for key, value in athlete.model_dump().items():
+            setattr(obj, key, value)
+        session.commit()
+        session.refresh(obj)
+        return obj
 
 @router.delete("/{athlete_id}")
 async def delete_athlete(athlete_id: int):
-    if athlete_id in athletes_db:
-        del athletes_db[athlete_id]
+    with get_session() as session:
+        obj = session.get(Athlete, athlete_id)
+        if obj:
+            session.delete(obj)
+            session.commit()
     return {"status": "deleted"}
 
 @router.get("/{athlete_id}/workouts", response_model=List[dict])
 async def athlete_workouts(athlete_id: int):
-    return [w for w in workouts_db.values() if w.get("athlete_id") == athlete_id]
+    with get_session() as session:
+        return session.query(Workout).filter(Workout.athlete_id == athlete_id).all()

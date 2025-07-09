@@ -1,10 +1,21 @@
-# Placeholder in-memory storage to mimic a database
-from typing import Dict
+import os
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
 
-DB = {}
-athletes_db: Dict[int, dict] = {}
-workouts_db: Dict[int, dict] = {}
-sets_db: Dict[int, dict] = {}
-plans_db: Dict[int, dict] = {}
-messages_db: Dict[int, dict] = {}
-notifications_db: Dict[int, dict] = {}
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./trainer_bot.db")
+
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
+
+# Import models so that metadata is populated before creating tables
+from .. import models  # noqa: E402
+
+Base.metadata.create_all(bind=engine)
+
+def get_engine():
+    return engine
+
+def get_session():
+    return SessionLocal()

@@ -10,7 +10,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 # Import models so that metadata is populated before creating tables
-from .. import models  # noqa: E402
+from .. import models  # noqa: F401,E402
 
 Base.metadata.create_all(bind=engine)
 

@@ -1,11 +1,19 @@
-# test
+# Gym Telegram Bot
 
-## Installation
+Пример простого телеграм-бота для помощи с тренировками в спортивном зале.
 
-Install dependencies with:
+## Возможности
+- Создание упражнений с несколькими сетами (вес, повторения, отдых).
+- Создание тренировок из набора упражнений на определённую дату.
+- Напоминание о предстоящей тренировке.
 
-```bash
-pip install -r requirements.txt
-```
-
-The `urllib3` dependency is pinned to versions less than 2 in `requirements.txt`.
+## Запуск
+1. Установите зависимости:
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. Укажите токен бота в переменной окружения `TELEGRAM_TOKEN`.
+3. Запустите бота:
+   ```bash
+   python bot.py
+   ```

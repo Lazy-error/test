@@ -28,6 +28,26 @@ uvicorn trainer_bot.app.main:app --reload
 docker-compose up --build
 ```
 
+### PostgreSQL with Docker Compose
+
+The default `DATABASE_URL` expects a PostgreSQL server. To start the bundled
+database using Docker Compose:
+
+```bash
+docker-compose up -d db
+```
+
+This launches a PostgreSQL instance listening on port `5432` with the
+`trainer/trainer` user/password combination. The database name is `trainer`.
+
+To use TimescaleDB features, enable the extension after the container starts:
+
+```bash
+docker exec -it test-db-1 psql -U trainer -d trainer -c "CREATE EXTENSION IF NOT EXISTS timescaledb"
+```
+
+Replace `test-db-1` with the name of your running container if it differs.
+
 Open <http://localhost:8000/docs> for the Swagger UI.
 
 ### Running the Telegram bot

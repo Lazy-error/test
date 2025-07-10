@@ -22,6 +22,20 @@ def _telegram_payload(user_id: int = 1):
     return data
 
 
+def _telegram_payload_full(user_id: int = 1):
+    data = {
+        "id": user_id,
+        "first_name": "Test",
+        "last_name": None,
+        "username": None,
+        "auth_date": 1,
+    }
+    secret = hashlib.sha256(BOT_TOKEN.encode()).digest()
+    data_check = "\n".join(f"{k}={v}" for k, v in sorted(data.items()))
+    data["hash"] = hmac.new(secret, data_check.encode(), hashlib.sha256).hexdigest()
+    return data
+
+
 def _coach_headers():
     res = client.post("/api/v1/auth/telegram", json={**_telegram_payload(1), "role": "coach"})
     token = res.json()["access_token"]
@@ -45,4 +59,17 @@ def test_invite_flow():
 
     # reuse should fail
     res3 = client.post("/api/v1/invites/bot", json=payload)
+    assert res3.status_code == 400
+
+
+def test_invite_flow_telegram():
+    headers = _coach_headers()
+    res = client.post("/api/v1/invites/", json={}, headers=headers)
+    token = res.json()["invite_token"]
+
+    payload = {**_telegram_payload_full(70), "invite_token": token}
+    res2 = client.post("/api/v1/invites/telegram", json=payload)
+    assert res2.status_code == 200
+
+    res3 = client.post("/api/v1/invites/telegram", json=payload)
     assert res3.status_code == 400

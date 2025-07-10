@@ -36,3 +36,21 @@ def test_create_plan():
     data = res.json()
     assert data["title"] == "Plan A"
     assert "id" in data
+
+
+def test_plan_crud():
+    headers = _auth_headers()
+    res = client.post("/api/v1/plans/", json={"title": "Plan B"}, headers=headers)
+    plan_id = res.json()["id"]
+
+    res = client.get("/api/v1/plans/", headers=headers)
+    assert any(p["id"] == plan_id for p in res.json())
+
+    res = client.get(f"/api/v1/plans/{plan_id}", headers=headers)
+    assert res.status_code == 200
+
+    res = client.patch(f"/api/v1/plans/{plan_id}", json={"title": "Plan C"}, headers=headers)
+    assert res.json()["title"] == "Plan C"
+
+    res = client.delete(f"/api/v1/plans/{plan_id}", headers=headers)
+    assert res.json()["status"] == "deleted"

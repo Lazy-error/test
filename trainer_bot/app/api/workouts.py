@@ -3,6 +3,7 @@ from typing import List
 
 from ..schemas.workout import WorkoutCreate, Workout as WorkoutSchema
 from ..services.db import get_session
+from ..services.scheduler import schedule_workout_reminder
 from ..models import Workout, Set
 from ..schemas.set import SetCreate
 from .auth import get_current_user, require_roles, Role
@@ -21,7 +22,8 @@ async def create_workout(workout: WorkoutCreate, user=Depends(require_roles([Rol
         session.add(obj)
         session.commit()
         session.refresh(obj)
-        return obj
+    schedule_workout_reminder(obj)
+    return obj
 
 @router.get("/{workout_id}", response_model=WorkoutSchema)
 async def get_workout(workout_id: int, user=Depends(get_current_user)):
@@ -41,7 +43,8 @@ async def update_workout(workout_id: int, workout: WorkoutCreate, user=Depends(r
             setattr(obj, key, value)
         session.commit()
         session.refresh(obj)
-        return obj
+    schedule_workout_reminder(obj)
+    return obj
 
 @router.delete("/{workout_id}")
 async def delete_workout(workout_id: int, user=Depends(require_roles([Role.coach, Role.superadmin]))):

@@ -73,10 +73,13 @@ async def telegram_auth(auth: TelegramAuth):
                 last_name=auth.last_name,
                 username=auth.username,
                 role=(auth.role.value if auth.role else Role.athlete.value),
+                timezone=auth.timezone or os.getenv("TZ", "Europe/Moscow"),
             )
             session.add(user)
             session.commit()
             session.refresh(user)
+        elif auth.timezone:
+            user.timezone = auth.timezone
         access = create_access_token(user.id)
         refresh = create_refresh_token(user.id)
         user.refresh_token = refresh
@@ -98,10 +101,13 @@ async def bot_auth(data: BotAuth):
                 last_name=data.last_name,
                 username=data.username,
                 role=(data.role.value if data.role else Role.athlete.value),
+                timezone=data.timezone or os.getenv("TZ", "Europe/Moscow"),
             )
             session.add(user)
             session.commit()
             session.refresh(user)
+        elif data.timezone:
+            user.timezone = data.timezone
         access = create_access_token(user.id)
         refresh = create_refresh_token(user.id)
         user.refresh_token = refresh

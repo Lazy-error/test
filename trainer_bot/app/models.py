@@ -91,6 +91,7 @@ class User(Base):
     username = Column(String)
     role = Column(String, default=Role.athlete.value, nullable=False)
     refresh_token = Column(String, nullable=True)
+    timezone = Column(String, default="Europe/Moscow")
 
 
 class Invite(Base):

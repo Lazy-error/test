@@ -21,6 +21,7 @@ services:
     environment:
       DATABASE_URL: postgres://trainer:trainer@db:5432/trainer
       REDIS_URL: redis://redis:6379/0
+      BOT_TOKEN: ${BOT_TOKEN}
     depends_on:
       - db
       - redis

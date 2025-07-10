@@ -4,7 +4,7 @@ from aiogram.filters import CommandStart, Command
 import json
 from datetime import date
 from ...services.db import get_session
-from ...models import Workout, Set
+from ...models import Workout, Set, Exercise
 import httpx
 import os
 from typing import Dict, Any
@@ -54,6 +54,7 @@ async def show_menu(chat_id: int):
             [InlineKeyboardButton(text="Предстоящие тренировки", callback_data="cmd:future")],
             [InlineKeyboardButton(text="Добавить атлета", callback_data="cmd:add_athlete")],
             [InlineKeyboardButton(text="Добавить тренировку", callback_data="cmd:add_workout")],
+            [InlineKeyboardButton(text="Добавить сет", callback_data="cmd:add_set")],
             [InlineKeyboardButton(text="Отправить сообщение", callback_data="cmd:proxy")],
             [InlineKeyboardButton(text="Помощь", callback_data="cmd:help")],
         ]
@@ -73,7 +74,7 @@ async def menu_cmd(message: Message):
 @dp.message(Command("help"))
 async def help_cmd(message: Message):
     await message.answer(
-        "Доступные команды: /start /menu /help /today /future /proxy /api /add_athlete /add_workout"
+        "Доступные команды: /start /menu /help /today /future /proxy /api /add_athlete /add_workout /add_set"
     )
 
 @dp.message(Command("today"))
@@ -90,7 +91,8 @@ async def today_cmd(message: Message):
                     InlineKeyboardButton(text="20kg×5", callback_data=f"set:{s.id}:20:5"),
                     InlineKeyboardButton(text="25kg×5", callback_data=f"set:{s.id}:25:5")
                 ]])
-                await message.answer(f"{s.exercise} {s.weight}×{s.reps}", reply_markup=kb)
+                ex_name = s.exercise.name if s.exercise else str(s.exercise_id)
+                await message.answer(f"{ex_name} {s.weight}×{s.reps}", reply_markup=kb)
     else:
         await message.answer("На сегодня тренировок нет.")
 
@@ -162,6 +164,8 @@ async def menu_callback(call: CallbackQuery):
         await add_athlete_cmd(call.message)
     elif action == "add_workout":
         await add_workout_cmd(call.message)
+    elif action == "add_set":
+        await add_set_cmd(call.message)
     await call.answer()
 
 @dp.callback_query(lambda c: c.data.startswith("set:"))
@@ -177,7 +181,7 @@ async def set_callback(call: CallbackQuery):
             return
         payload = {
             "workout_id": obj.workout_id,
-            "exercise": obj.exercise,
+            "exercise_id": obj.exercise_id,
             "weight": float(weight),
             "reps": int(reps),
             "order": obj.order,
@@ -189,6 +193,19 @@ async def set_callback(call: CallbackQuery):
             await call.answer("Ошибка соединения")
             return
     await call.answer("Обновлено")
+
+
+@dp.callback_query(lambda c: c.data.startswith("ex:"))
+async def exercise_pick(call: CallbackQuery):
+    ex_id = int(call.data.split(":")[1])
+    state = user_states.get(call.message.chat.id)
+    if not state or state.get("cmd") != "add_set":
+        await call.answer()
+        return
+    state["exercise_id"] = ex_id
+    state["step"] = "metrics"
+    await call.message.answer("Введите параметры сета. Для силовых: <вес> <повторы>. Для кардио: <км> [сек]")
+    await call.answer()
 
 
 @dp.message(Command("add_athlete"))
@@ -203,6 +220,12 @@ async def add_workout_cmd(message: Message):
     await message.answer(
         "Создаём тренировку. Отправьте ID атлета (число):"
     )
+
+
+@dp.message(Command("add_set"))
+async def add_set_cmd(message: Message):
+    user_states[message.chat.id] = {"cmd": "add_set", "step": "workout"}
+    await message.answer("Создаём сет. Отправьте ID тренировки:")
 
 
 @dp.message()
@@ -275,6 +298,55 @@ async def handle_flow(message: Message):
                 await message.answer(f"Тренировка создана с id {data.get('id')}")
             else:
                 await message.answer(f"Не удалось создать тренировку: {resp.text}")
+            user_states.pop(message.chat.id, None)
+            await show_menu(message.chat.id)
+    elif state["cmd"] == "add_set":
+        if state["step"] == "workout":
+            state["workout_id"] = int(message.text.strip())
+            async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+                try:
+                    resp = await client.get("/api/v1/exercises/", headers=headers)
+                except httpx.RequestError:
+                    await message.answer("Не удалось подключиться к серверу")
+                    user_states.pop(message.chat.id, None)
+                    await show_menu(message.chat.id)
+                    return
+            if resp.status_code == 200 and resp.json():
+                ex_list = resp.json()
+                kb = InlineKeyboardMarkup(
+                    inline_keyboard=[[InlineKeyboardButton(text=e["name"], callback_data=f"ex:{e['id']}")]
+                                    for e in ex_list]
+                )
+                state["step"] = "exercise"
+                await message.answer("Выберите упражнение:", reply_markup=kb)
+            else:
+                await message.answer("Библиотека упражнений пуста")
+                user_states.pop(message.chat.id, None)
+                await show_menu(message.chat.id)
+        elif state["step"] == "metrics":
+            parts = message.text.split()
+            payload = {
+                "workout_id": state["workout_id"],
+                "exercise_id": state["exercise_id"],
+                "order": 1,
+            }
+            if len(parts) >= 2:
+                payload["weight"] = float(parts[0])
+                payload["reps"] = int(parts[1])
+            elif len(parts) == 1:
+                payload["distance_km"] = float(parts[0])
+            async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+                try:
+                    resp = await client.post("/api/v1/sets/", json=payload, headers=headers)
+                except httpx.RequestError:
+                    await message.answer("Не удалось подключиться к серверу")
+                    user_states.pop(message.chat.id, None)
+                    await show_menu(message.chat.id)
+                    return
+            if resp.status_code == 200:
+                await message.answer("Сет создан")
+            else:
+                await message.answer(f"Ошибка: {resp.text}")
             user_states.pop(message.chat.id, None)
             await show_menu(message.chat.id)
 

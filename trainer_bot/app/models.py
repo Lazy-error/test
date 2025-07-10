@@ -11,6 +11,19 @@ class Role(str, Enum):
     athlete = "athlete"
     superadmin = "superadmin"
 
+
+class MetricType(str, Enum):
+    strength = "strength"
+    cardio = "cardio"
+
+
+class Exercise(Base):
+    __tablename__ = 'exercises'
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    description = Column(Text)
+    metric_type = Column(String, nullable=False)
+
 class Athlete(Base):
     __tablename__ = 'athletes'
     id = Column(Integer, primary_key=True)
@@ -36,7 +49,7 @@ class Set(Base):
     __tablename__ = 'sets'
     id = Column(Integer, primary_key=True)
     workout_id = Column(Integer, ForeignKey('workouts.id'), nullable=False)
-    exercise = Column(String, nullable=False)
+    exercise_id = Column(Integer, ForeignKey('exercises.id'), nullable=False)
     weight = Column(Float, nullable=True)
     reps = Column(Integer, nullable=True)
     distance_km = Column(Float, nullable=True)
@@ -46,6 +59,7 @@ class Set(Base):
     order = Column(Integer, nullable=False)
 
     workout = relationship('Workout', back_populates='sets')
+    exercise = relationship('Exercise')
 
 class Plan(Base):
     __tablename__ = 'plans'

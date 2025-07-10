@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, Time, Text, Float, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Date, Time, Text, Float, ForeignKey, DateTime, Boolean
 from sqlalchemy.orm import relationship
 import datetime
 
@@ -91,3 +91,13 @@ class User(Base):
     username = Column(String)
     role = Column(String, default=Role.athlete.value, nullable=False)
     refresh_token = Column(String, nullable=True)
+
+
+class Invite(Base):
+    __tablename__ = 'invites'
+    id = Column(Integer, primary_key=True)
+    jti = Column(String, unique=True, nullable=False)
+    role = Column(String, default=Role.athlete.value, nullable=False)
+    issued_by = Column(Integer, ForeignKey('users.id'), nullable=False)
+    used = Column(Boolean, default=False, nullable=False)
+    issued_at = Column(DateTime, default=datetime.datetime.utcnow)

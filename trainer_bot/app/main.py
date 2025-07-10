@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from .api import athletes, workouts, sets, plans, reports, notifications, messages, telegram, auth, protected, exercises
+from .api import athletes, workouts, sets, plans, reports, notifications, messages, telegram, auth, protected, exercises, invites
 
 app = FastAPI(title="Trainer Bot API")
 
@@ -14,6 +14,7 @@ app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(messages.router, prefix="/api/v1")
 app.include_router(telegram.router)
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(invites.router, prefix="/api/v1")
 app.include_router(protected.router, prefix="/api/v1")
 
 @app.get("/ping")

@@ -82,7 +82,7 @@ async def telegram_auth(auth: TelegramAuth):
 
 @router.post("/bot", response_model=TokenPair)
 async def bot_auth(data: BotAuth):
-    bot_token = os.getenv("BOT_TOKEN", "")
+    bot_token = '8071149995:AAGkhAiVOOjgiXBkmhWgmqNOHW6k2DYpfGo'
     if data.bot_token != bot_token:
         raise HTTPException(status_code=401, detail="invalid bot token")
     with get_session() as session:

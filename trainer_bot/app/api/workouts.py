@@ -4,6 +4,7 @@ from typing import List
 from ..schemas.workout import WorkoutCreate, Workout as WorkoutSchema
 from ..services.db import get_session
 from ..models import Workout, Set
+from ..schemas.set import SetCreate
 from .auth import get_current_user, require_roles, Role
 
 router = APIRouter(prefix="/workouts", tags=["workouts"])
@@ -57,9 +58,12 @@ async def workout_sets(workout_id: int, user=Depends(get_current_user)):
         return session.query(Set).filter(Set.workout_id == workout_id).all()
 
 @router.post("/{workout_id}/sets", response_model=dict)
-async def create_workout_set(workout_id: int, set_in: dict, user=Depends(require_roles([Role.coach, Role.superadmin]))):
+async def create_workout_set(workout_id: int, set_in: SetCreate, user=Depends(require_roles([Role.coach, Role.superadmin]))):
     with get_session() as session:
-        obj = Set(workout_id=workout_id, **set_in)
+        data = set_in.model_dump()
+        if data.get("weight") is None and data.get("distance_km") is None:
+            raise HTTPException(status_code=400, detail="Missing metrics")
+        obj = Set(workout_id=workout_id, **data)
         session.add(obj)
         session.commit()
         session.refresh(obj)

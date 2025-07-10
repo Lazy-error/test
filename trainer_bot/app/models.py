@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, Text, Float, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Date, Time, Text, Float, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 import datetime
 
@@ -24,6 +24,7 @@ class Workout(Base):
     id = Column(Integer, primary_key=True)
     athlete_id = Column(Integer, ForeignKey('athletes.id'), nullable=False)
     date = Column(Date, nullable=False)
+    time = Column(Time)
     type = Column(String, nullable=False)
     title = Column(String, nullable=False)
     notes = Column(Text)

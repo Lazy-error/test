@@ -243,6 +243,10 @@ async def handle_flow(message: Message):
             await message.answer("Введите дату тренировки (ГГГГ-ММ-ДД):")
         elif state["step"] == "date":
             state["date"] = message.text.strip()
+            state["step"] = "time"
+            await message.answer("Введите время тренировки (ЧЧ:ММ):")
+        elif state["step"] == "time":
+            state["time"] = message.text.strip()
             state["step"] = "type"
             await message.answer("Введите тип тренировки (например, силовая):")
         elif state["step"] == "type":
@@ -254,6 +258,7 @@ async def handle_flow(message: Message):
             payload = {
                 "athlete_id": int(state["athlete_id"]),
                 "date": state["date"],
+                "time": state.get("time"),
                 "type": state["type"],
                 "title": state["title"],
             }

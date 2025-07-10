@@ -89,7 +89,9 @@ Example:
 /api get /api/v1/workouts
 ```
 
-To authenticate requests, set `TRAINER_API_TOKEN` with a valid bearer token.
+By default the bot obtains an access token automatically using your Telegram
+account through the `/api/v1/auth/bot` endpoint. You can override the token by
+setting `TRAINER_API_TOKEN` with a valid bearer token.
 
 ### Time zone
 

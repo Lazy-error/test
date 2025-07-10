@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 class SetBase(BaseModel):
     workout_id: int
-    exercise: str
+    exercise_id: int
     weight: float | None = None
     reps: int | None = None
     distance_km: float | None = None
@@ -22,6 +22,7 @@ class Set(SetBase):
 
 
 class SetUpdate(BaseModel):
+    exercise_id: int | None = None
     weight: float | None = None
     reps: int | None = None
     distance_km: float | None = None

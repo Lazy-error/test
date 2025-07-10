@@ -31,25 +31,29 @@ def _auth_headers(role="coach", user_id: int = 1):
 
 def test_create_set():
     headers = _auth_headers()
-    # create workout first
+    res = client.post("/api/v1/exercises/", json={"name": "Bench", "metric_type": "strength"}, headers=headers)
+    ex_id = res.json()["id"]
     res = client.post("/api/v1/workouts/", json={"athlete_id": 1, "date": "2025-01-01", "type": "strength", "title": "A"}, headers=headers)
     wid = res.json()["id"]
-    res = client.post("/api/v1/sets/", json={"workout_id": wid, "exercise": "Bench", "weight": 50, "reps": 5, "order": 1}, headers=headers)
+    payload = {"workout_id": wid, "exercise_id": ex_id, "weight": 50, "reps": 5, "order": 1}
+    res = client.post("/api/v1/sets/", json=payload, headers=headers)
     assert res.status_code == 200
     data = res.json()
     assert data["workout_id"] == wid
-    assert data["exercise"] == "Bench"
+    assert data["exercise_id"] == ex_id
 
 
 def test_create_cardio_set():
     headers = _auth_headers()
+    ex = client.post("/api/v1/exercises/", json={"name": "Run", "metric_type": "cardio"}, headers=headers)
+    ex_id = ex.json()["id"]
     res = client.post(
         "/api/v1/workouts/",
         json={"athlete_id": 1, "date": "2025-01-02", "type": "cardio", "title": "Run"},
         headers=headers,
     )
     wid = res.json()["id"]
-    payload = {"workout_id": wid, "exercise": "Run", "distance_km": 5, "duration_sec": 1500, "order": 1}
+    payload = {"workout_id": wid, "exercise_id": ex_id, "distance_km": 5, "duration_sec": 1500, "order": 1}
     res = client.post("/api/v1/sets/", json=payload, headers=headers)
     assert res.status_code == 200
     data = res.json()
@@ -59,6 +63,8 @@ def test_create_cardio_set():
 
 def test_pending_edit_by_athlete_and_confirm():
     coach_headers = _auth_headers()
+    ex = client.post("/api/v1/exercises/", json={"name": "Press", "metric_type": "strength"}, headers=coach_headers)
+    ex_id = ex.json()["id"]
     res = client.post(
         "/api/v1/workouts/",
         json={"athlete_id": 1, "date": "2025-01-03", "type": "strength", "title": "S"},
@@ -67,7 +73,7 @@ def test_pending_edit_by_athlete_and_confirm():
     wid = res.json()["id"]
     res = client.post(
         "/api/v1/sets/",
-        json={"workout_id": wid, "exercise": "Press", "weight": 40, "reps": 5, "order": 1},
+        json={"workout_id": wid, "exercise_id": ex_id, "weight": 40, "reps": 5, "order": 1},
         headers=coach_headers,
     )
     set_id = res.json()["id"]

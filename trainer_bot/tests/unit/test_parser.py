@@ -1,4 +1,4 @@
-from trainer_bot.app.services.parser import parse_strength_cell
+from trainer_bot.app.services.parser import parse_strength_cell, parse_cardio_cell
 
 
 def test_parse_strength_cell():
@@ -19,3 +19,10 @@ def test_parse_strength_cell_invalid():
     import pytest
     with pytest.raises(ValueError):
         parse_strength_cell("invalid")
+
+
+def test_parse_cardio_cell():
+    data = parse_cardio_cell("5 km 25:30 150")
+    assert data["distance_km"] == 5.0
+    assert data["duration_sec"] == 1530
+    assert data["avg_hr"] == 150

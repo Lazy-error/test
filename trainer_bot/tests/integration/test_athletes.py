@@ -28,8 +28,10 @@ def _auth_headers():
 
 def test_create_athlete():
     headers = _auth_headers()
-    res = client.post("/api/v1/athletes/", json={"name": "John"}, headers=headers)
+    payload = {"name": "John", "contraindications": "asthma"}
+    res = client.post("/api/v1/athletes/", json=payload, headers=headers)
     assert res.status_code == 200
     data = res.json()
     assert data["name"] == "John"
+    assert data["contraindications"] == "asthma"
     assert "id" in data

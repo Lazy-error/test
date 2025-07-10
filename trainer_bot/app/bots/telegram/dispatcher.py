@@ -10,7 +10,7 @@ import httpx
 import os
 from typing import Dict, Any
 
-API_TOKEN = os.getenv("BOT_TOKEN", "123456:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi")
+API_TOKEN = os.getenv("BOT_TOKEN")
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 bot = Bot(API_TOKEN)

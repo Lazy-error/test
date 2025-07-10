@@ -1,4 +1,6 @@
 import os
+os.environ["BOT_TOKEN"] = "123456:TESTTOKEN"
+
 import hashlib
 import hmac
 import jwt
@@ -7,8 +9,7 @@ from fastapi.testclient import TestClient
 
 client = TestClient(app)
 
-BOT_TOKEN = "testtoken"
-os.environ["BOT_TOKEN"] = BOT_TOKEN
+BOT_TOKEN = "123456:TESTTOKEN"
 
 
 def _telegram_payload(user_id: int = 1, role: str | None = None):

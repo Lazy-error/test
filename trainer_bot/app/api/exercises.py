@@ -3,7 +3,7 @@ from typing import List
 
 from ..schemas.exercise import ExerciseCreate, Exercise as ExerciseSchema
 from ..services.db import get_session
-from ..models import Exercise, MetricType
+from ..models import Exercise
 from .auth import get_current_user, require_roles, Role
 
 router = APIRouter(prefix="/exercises", tags=["exercises"])

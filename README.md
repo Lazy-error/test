@@ -119,3 +119,13 @@ setting `TRAINER_API_TOKEN` with a valid bearer token.
 
 The scheduler uses the `TZ` environment variable to determine the bot's time
 zone. If unset, the application defaults to **Europe/Moscow**.
+
+### Running tests
+
+The test suite expects a Telegram bot token via the `BOT_TOKEN` environment
+variable. Any value will work for local testing:
+
+```bash
+export BOT_TOKEN=testtoken
+pytest
+```

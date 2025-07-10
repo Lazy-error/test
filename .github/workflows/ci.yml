@@ -12,6 +12,8 @@ jobs:
       - name: Lint
         run: ruff .
       - name: Test
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
         run: PYTHONPATH=. pytest --cov=trainer_bot --cov-report=xml --cov-report=term --cov-fail-under=70
       - uses: actions/upload-artifact@v3
         with:

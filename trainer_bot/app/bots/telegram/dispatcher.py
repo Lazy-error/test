@@ -21,19 +21,19 @@ user_states: Dict[int, Dict[str, Any]] = {}
 async def show_menu(chat_id: int):
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="Today's workouts", callback_data="cmd:today")],
-            [InlineKeyboardButton(text="Upcoming workouts", callback_data="cmd:future")],
-            [InlineKeyboardButton(text="Add athlete", callback_data="cmd:add_athlete")],
-            [InlineKeyboardButton(text="Add workout", callback_data="cmd:add_workout")],
-            [InlineKeyboardButton(text="Send message", callback_data="cmd:proxy")],
-            [InlineKeyboardButton(text="Help", callback_data="cmd:help")],
+            [InlineKeyboardButton(text="Тренировки на сегодня", callback_data="cmd:today")],
+            [InlineKeyboardButton(text="Предстоящие тренировки", callback_data="cmd:future")],
+            [InlineKeyboardButton(text="Добавить атлета", callback_data="cmd:add_athlete")],
+            [InlineKeyboardButton(text="Добавить тренировку", callback_data="cmd:add_workout")],
+            [InlineKeyboardButton(text="Отправить сообщение", callback_data="cmd:proxy")],
+            [InlineKeyboardButton(text="Помощь", callback_data="cmd:help")],
         ]
     )
-    await bot.send_message(chat_id, "Choose an action:", reply_markup=kb)
+    await bot.send_message(chat_id, "Выберите действие:", reply_markup=kb)
 
 @dp.message(CommandStart())
 async def start(message: Message):
-    await message.answer("Hello! This is Trainer Bot")
+    await message.answer("Привет! Это Trainer Bot")
     await show_menu(message.chat.id)
 
 
@@ -44,7 +44,7 @@ async def menu_cmd(message: Message):
 @dp.message(Command("help"))
 async def help_cmd(message: Message):
     await message.answer(
-        "Available commands: /start /menu /help /today /future /proxy /api /add_athlete /add_workout"
+        "Доступные команды: /start /menu /help /today /future /proxy /api /add_athlete /add_workout"
     )
 
 @dp.message(Command("today"))
@@ -63,13 +63,13 @@ async def today_cmd(message: Message):
                 ]])
                 await message.answer(f"{s.exercise} {s.weight}×{s.reps}", reply_markup=kb)
     else:
-        await message.answer("No workouts for today.")
+        await message.answer("На сегодня тренировок нет.")
 
 @dp.message(Command("proxy"))
 async def proxy_cmd(message: Message):
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2:
-        await message.answer("Usage: /proxy <text>")
+        await message.answer("Использование: /proxy <текст>")
         return
     text = parts[1]
     trainer_chat = os.getenv("TRAINER_CHAT_ID")
@@ -84,9 +84,9 @@ async def future_cmd(message: Message):
     with get_session() as session:
         items = session.query(Workout).filter(Workout.date >= today).all()
     if not items:
-        await message.answer("No future workouts")
+        await message.answer("Нет запланированных тренировок")
         return
-    text = "Upcoming workouts:\n" + "\n".join(f"{w.date} {w.title}" for w in items)
+    text = "Ближайшие тренировки:\n" + "\n".join(f"{w.date} {w.title}" for w in items)
     await message.answer(text)
 
 
@@ -94,7 +94,7 @@ async def future_cmd(message: Message):
 async def api_cmd(message: Message):
     parts = message.text.split(maxsplit=3)
     if len(parts) < 3:
-        await message.answer("Usage: /api <method> <path> [json]")
+        await message.answer("Использование: /api <method> <path> [json]")
         return
     method = parts[1].upper()
     path = parts[2]
@@ -103,7 +103,7 @@ async def api_cmd(message: Message):
         try:
             data = json.loads(parts[3])
         except json.JSONDecodeError:
-            await message.answer("Invalid JSON payload")
+            await message.answer("Некорректный JSON")
             return
     token = os.getenv("TRAINER_API_TOKEN")
     headers = {"Authorization": f"Bearer {token}"} if token else {}
@@ -112,7 +112,7 @@ async def api_cmd(message: Message):
     text = resp.text
     if len(text) > 4000:
         text = text[:3990] + "..."
-    await message.answer(f"Status {resp.status_code}\n{text}")
+    await message.answer(f"Статус {resp.status_code}\n{text}")
 
 
 @dp.callback_query(lambda c: c.data.startswith("cmd:"))
@@ -125,7 +125,7 @@ async def menu_callback(call: CallbackQuery):
     elif action == "help":
         await help_cmd(call.message)
     elif action == "proxy":
-        await call.message.answer("Send message using /proxy <text>")
+        await call.message.answer("Отправьте сообщение с помощью /proxy <текст>")
     elif action == "add_athlete":
         await add_athlete_cmd(call.message)
     elif action == "add_workout":
@@ -140,7 +140,7 @@ async def set_callback(call: CallbackQuery):
         with get_session() as session:
             obj = session.get(Set, set_id)
         if not obj:
-            await call.answer("Set not found")
+            await call.answer("Сет не найден")
             return
         payload = {
             "workout_id": obj.workout_id,
@@ -151,19 +151,21 @@ async def set_callback(call: CallbackQuery):
         }
         url = f"http://localhost:8000/api/v1/sets/{set_id}"
         await client.patch(url, json=payload)
-    await call.answer("Updated")
+    await call.answer("Обновлено")
 
 
 @dp.message(Command("add_athlete"))
 async def add_athlete_cmd(message: Message):
     user_states[message.chat.id] = {"cmd": "add_athlete", "step": "name"}
-    await message.answer("Enter athlete name:")
+    await message.answer("Введите имя атлета (например, Иван Иванов):")
 
 
 @dp.message(Command("add_workout"))
 async def add_workout_cmd(message: Message):
     user_states[message.chat.id] = {"cmd": "add_workout", "step": "athlete"}
-    await message.answer("Enter athlete id:")
+    await message.answer(
+        "Создаём тренировку. Отправьте ID атлета (число):"
+    )
 
 
 @dp.message()
@@ -179,23 +181,24 @@ async def handle_flow(message: Message):
             resp = await client.post("/api/v1/athletes/", json={"name": name}, headers=headers)
         if resp.status_code == 200:
             data = resp.json()
-            await message.answer(f"Athlete created with id {data.get('id')}")
+            await message.answer(f"Атлет создан с id {data.get('id')}")
         else:
-            await message.answer(f"Failed to create athlete: {resp.text}")
+            await message.answer(f"Не удалось создать атлета: {resp.text}")
         user_states.pop(message.chat.id, None)
+        await show_menu(message.chat.id)
     elif state["cmd"] == "add_workout":
         if state["step"] == "athlete":
             state["athlete_id"] = message.text.strip()
             state["step"] = "date"
-            await message.answer("Enter date (YYYY-MM-DD):")
+            await message.answer("Введите дату тренировки (ГГГГ-ММ-ДД):")
         elif state["step"] == "date":
             state["date"] = message.text.strip()
             state["step"] = "type"
-            await message.answer("Enter type:")
+            await message.answer("Введите тип тренировки (например, силовая):")
         elif state["step"] == "type":
             state["type"] = message.text.strip()
             state["step"] = "title"
-            await message.answer("Enter title:")
+            await message.answer("Введите название тренировки:")
         elif state["step"] == "title":
             state["title"] = message.text.strip()
             payload = {
@@ -208,8 +211,9 @@ async def handle_flow(message: Message):
                 resp = await client.post("/api/v1/workouts/", json=payload, headers=headers)
             if resp.status_code == 200:
                 data = resp.json()
-                await message.answer(f"Workout created with id {data.get('id')}")
+                await message.answer(f"Тренировка создана с id {data.get('id')}")
             else:
-                await message.answer(f"Failed to create workout: {resp.text}")
+                await message.answer(f"Не удалось создать тренировку: {resp.text}")
             user_states.pop(message.chat.id, None)
+            await show_menu(message.chat.id)
 

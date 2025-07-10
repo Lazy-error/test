@@ -10,6 +10,7 @@ class TelegramAuth(BaseModel):
     hash: str
     role: Role | None = None
     invite_token: str | None = None
+    timezone: str | None = None
 
 class TokenPair(BaseModel):
     access_token: str
@@ -28,6 +29,7 @@ class BotAuth(BaseModel):
     bot_token: str
     role: Role | None = None
     invite_token: str | None = None
+    timezone: str | None = None
 
 class RoleUpdate(BaseModel):
     role: Role

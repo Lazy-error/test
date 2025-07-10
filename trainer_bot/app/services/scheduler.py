@@ -48,7 +48,8 @@ def setup_scheduler():
     with get_session() as session:
         workouts = session.query(Workout).all()
         for w in workouts:
-            dt = tz.localize(datetime.combine(w.date, datetime.min.time())) - timedelta(hours=1)
+            w_dt = datetime.combine(w.date, w.time or datetime.min.time())
+            dt = tz.localize(w_dt) - timedelta(hours=1)
             scheduler.add_job(workout_reminder, 'date', run_date=dt, args=[w.id])
     scheduler.start()
 

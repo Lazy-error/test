@@ -8,4 +8,5 @@ httpx
 PyJWT
 pytest-cov
 ruff
+pytz
 APScheduler

@@ -1,6 +1,6 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
+import pytz
 import os
 
 from ..models import Workout
@@ -26,7 +26,7 @@ async def workout_reminder(workout_id: int):
         await _send(athlete_chat, text)
 
 async def daily_reminder():
-    tz = ZoneInfo(os.getenv("TZ", "UTC"))
+    tz = pytz.timezone(os.getenv("TZ", "Europe/Moscow"))
     tomorrow = datetime.now(tz).date() + timedelta(days=1)
     with get_session() as session:
         workouts = session.query(Workout).filter(Workout.date == tomorrow).all()
@@ -42,13 +42,13 @@ async def daily_reminder():
 
 
 def setup_scheduler():
-    tz = ZoneInfo(os.getenv("TZ", "UTC"))
+    tz = pytz.timezone(os.getenv("TZ", "Europe/Moscow"))
     scheduler.configure(timezone=tz)
     scheduler.add_job(daily_reminder, 'cron', hour=20, minute=0)
     with get_session() as session:
         workouts = session.query(Workout).all()
         for w in workouts:
-            dt = datetime.combine(w.date, datetime.min.time(), tzinfo=tz) - timedelta(hours=1)
+            dt = tz.localize(datetime.combine(w.date, datetime.min.time())) - timedelta(hours=1)
             scheduler.add_job(workout_reminder, 'date', run_date=dt, args=[w.id])
     scheduler.start()
 

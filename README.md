@@ -89,3 +89,8 @@ Example:
 ```
 
 To authenticate requests, set `TRAINER_API_TOKEN` with a valid bearer token.
+
+### Time zone
+
+The scheduler uses the `TZ` environment variable to determine the bot's time
+zone. If unset, the application defaults to **Europe/Moscow**.

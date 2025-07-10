@@ -4,9 +4,9 @@ import os
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-from ..schemas.auth import TelegramAuth, TokenPair, RefreshRequest, BotAuth
+from ..schemas.auth import TelegramAuth, TokenPair, RefreshRequest, BotAuth, RoleUpdate
 from ..services.db import get_session
-from ..models import User
+from ..models import User, Role
 import jwt
 import datetime
 
@@ -59,7 +59,9 @@ def verify_telegram(data: dict) -> bool:
 @router.post("/telegram", response_model=TokenPair)
 async def telegram_auth(auth: TelegramAuth):
     data = auth.model_dump(exclude_none=True)
-    if not verify_telegram(data.copy()):
+    verify_data = data.copy()
+    verify_data.pop("role", None)
+    if not verify_telegram(verify_data):
         raise HTTPException(status_code=400, detail="invalid auth data")
     with get_session() as session:
         user = session.query(User).filter(User.telegram_id == auth.id).first()
@@ -69,6 +71,7 @@ async def telegram_auth(auth: TelegramAuth):
                 first_name=auth.first_name,
                 last_name=auth.last_name,
                 username=auth.username,
+                role=(auth.role.value if auth.role else Role.athlete.value),
             )
             session.add(user)
             session.commit()
@@ -93,6 +96,7 @@ async def bot_auth(data: BotAuth):
                 first_name=data.first_name,
                 last_name=data.last_name,
                 username=data.username,
+                role=(data.role.value if data.role else Role.athlete.value),
             )
             session.add(user)
             session.commit()
@@ -140,10 +144,23 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         return user
 
 
-def require_roles(roles: list[str]):
+def require_roles(roles: list[Role] | list[str]):
+    allowed = [r.value if isinstance(r, Role) else r for r in roles]
     def dependency(user: User = Depends(get_current_user)):
-        if user.role not in roles:
+        if user.role not in allowed:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
         return user
 
     return dependency
+
+
+@router.patch("/users/{user_id}/role", response_model=dict)
+async def change_user_role(user_id: int, update: RoleUpdate, user=Depends(require_roles([Role.superadmin]))):
+    with get_session() as session:
+        obj = session.get(User, user_id)
+        if not obj:
+            raise HTTPException(status_code=404, detail="user not found")
+        obj.role = update.role.value
+        session.commit()
+        session.refresh(obj)
+        return {"id": obj.id, "role": obj.role}

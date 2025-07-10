@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from ..models import Role
 
 class TelegramAuth(BaseModel):
     id: int
@@ -7,6 +8,7 @@ class TelegramAuth(BaseModel):
     username: str | None = None
     auth_date: int
     hash: str
+    role: Role | None = None
 
 class TokenPair(BaseModel):
     access_token: str
@@ -23,3 +25,7 @@ class BotAuth(BaseModel):
     last_name: str | None = None
     username: str | None = None
     bot_token: str
+    role: Role | None = None
+
+class RoleUpdate(BaseModel):
+    role: Role

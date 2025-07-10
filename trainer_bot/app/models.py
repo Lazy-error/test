@@ -2,7 +2,14 @@ from sqlalchemy import Column, Integer, String, Date, Text, Float, ForeignKey, D
 from sqlalchemy.orm import relationship
 import datetime
 
+from enum import Enum
+
 from .services.db import Base
+
+class Role(str, Enum):
+    coach = "coach"
+    athlete = "athlete"
+    superadmin = "superadmin"
 
 class Athlete(Base):
     __tablename__ = 'athletes'
@@ -63,5 +70,5 @@ class User(Base):
     first_name = Column(String)
     last_name = Column(String)
     username = Column(String)
-    role = Column(String, default='user', nullable=False)
+    role = Column(String, default=Role.athlete.value, nullable=False)
     refresh_token = Column(String, nullable=True)

@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from ..schemas.auth import TelegramAuth, TokenPair, RefreshRequest, BotAuth, RoleUpdate
+from ..schemas.user import User as UserSchema
 from ..services.db import get_session
 from ..models import User, Role
 import jwt
@@ -164,3 +165,8 @@ async def change_user_role(user_id: int, update: RoleUpdate, user=Depends(requir
         session.commit()
         session.refresh(obj)
         return {"id": obj.id, "role": obj.role}
+
+
+@router.get("/users/me", response_model=UserSchema)
+async def get_me(user=Depends(get_current_user)):
+    return user

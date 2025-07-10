@@ -7,6 +7,26 @@ from ..models import Workout
 from .db import get_session
 from ..bots.telegram.dispatcher import bot
 
+
+async def missing_reports():
+    tz = pytz.timezone(os.getenv("TZ", "Europe/Moscow"))
+    yesterday = datetime.now(tz).date() - timedelta(days=1)
+    with get_session() as session:
+        workouts = session.query(Workout).filter(Workout.date == yesterday).all()
+    missing = []
+    for w in workouts:
+        if not w.sets or any(s.status != "confirmed" for s in w.sets):
+            missing.append(w.title)
+    if not missing:
+        return
+    text = "Missing reports: " + ", ".join(missing)
+    trainer_chat = os.getenv("TRAINER_CHAT_ID")
+    athlete_chat = os.getenv("ATHLETE_CHAT_ID")
+    if trainer_chat:
+        await _send(trainer_chat, text)
+    if athlete_chat:
+        await _send(athlete_chat, text)
+
 scheduler = AsyncIOScheduler()
 
 async def _send(chat_id: str, text: str):
@@ -45,6 +65,7 @@ def setup_scheduler():
     tz = pytz.timezone(os.getenv("TZ", "Europe/Moscow"))
     scheduler.configure(timezone=tz)
     scheduler.add_job(daily_reminder, 'cron', hour=20, minute=0)
+    scheduler.add_job(missing_reports, 'cron', hour=21, minute=0)
     with get_session() as session:
         workouts = session.query(Workout).all()
         for w in workouts:

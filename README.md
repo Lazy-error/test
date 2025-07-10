@@ -62,12 +62,16 @@ python run_bot.py
 ```
 
 After starting the script the bot will begin polling Telegram and will
-reply with `Hello! This is Trainer Bot` when you send the `/start` command.
+reply with `Привет! Это Trainer Bot` when you send the `/start` command.
 The `/start` or `/menu` command displays quick action buttons so a trainer can
 navigate the bot without typing raw API requests.
 
 The bot now supports interactive creation of athletes and workouts. Use
 `/add_athlete` or `/add_workout` from Telegram and follow the prompts.
+When adding a workout you will be asked for the athlete ID (a numeric
+identifier), the workout date in `YYYY-MM-DD` format, a type such as
+`strength` or `cardio`, and a short title. After the object is created the
+bot returns to the main menu.
 
 ### Using API commands via Telegram
 

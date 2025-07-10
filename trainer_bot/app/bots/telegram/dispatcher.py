@@ -4,7 +4,8 @@ from aiogram.filters import CommandStart, Command
 import json
 from datetime import date
 from ...services.db import get_session
-from ...models import Workout, Set, Exercise
+from ...models import Workout, Set
+from ...services.parser import parse_strength_cell
 import httpx
 import os
 from typing import Dict, Any
@@ -47,34 +48,54 @@ async def get_auth_headers(tg_user) -> Dict[str, str]:
     return {}
 
 
-async def show_menu(chat_id: int):
-    kb = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="Тренировки на сегодня", callback_data="cmd:today")],
-            [InlineKeyboardButton(text="Предстоящие тренировки", callback_data="cmd:future")],
+async def _get_role(tg_user) -> str:
+    headers = await get_auth_headers(tg_user)
+    if not headers:
+        return "athlete"
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.get("/api/v1/auth/users/me", headers=headers)
+        except httpx.RequestError:
+            return "athlete"
+    if resp.status_code == 200:
+        return resp.json().get("role", "athlete")
+    return "athlete"
+
+
+async def show_menu(chat_id: int, tg_user=None):
+    role = "athlete"
+    if tg_user:
+        role = await _get_role(tg_user)
+    keyboard = [
+        [InlineKeyboardButton(text="Тренировки на сегодня", callback_data="cmd:today")],
+        [InlineKeyboardButton(text="Предстоящие тренировки", callback_data="cmd:future")],
+    ]
+    if role == "coach":
+        keyboard.extend([
             [InlineKeyboardButton(text="Добавить атлета", callback_data="cmd:add_athlete")],
             [InlineKeyboardButton(text="Добавить тренировку", callback_data="cmd:add_workout")],
             [InlineKeyboardButton(text="Добавить сет", callback_data="cmd:add_set")],
-            [InlineKeyboardButton(text="Отправить сообщение", callback_data="cmd:proxy")],
-            [InlineKeyboardButton(text="Помощь", callback_data="cmd:help")],
-        ]
-    )
+            [InlineKeyboardButton(text="Планы", callback_data="cmd:plans")],
+        ])
+    keyboard.append([InlineKeyboardButton(text="Отправить сообщение", callback_data="cmd:proxy")])
+    keyboard.append([InlineKeyboardButton(text="Помощь", callback_data="cmd:help")])
+    kb = InlineKeyboardMarkup(inline_keyboard=keyboard)
     await bot.send_message(chat_id, "Выберите действие:", reply_markup=kb)
 
 @dp.message(CommandStart())
 async def start(message: Message):
     await message.answer("Привет! Это Trainer Bot")
-    await show_menu(message.chat.id)
+    await show_menu(message.chat.id, message.from_user)
 
 
 @dp.message(Command("menu"))
 async def menu_cmd(message: Message):
-    await show_menu(message.chat.id)
+    await show_menu(message.chat.id, message.from_user)
 
 @dp.message(Command("help"))
 async def help_cmd(message: Message):
     await message.answer(
-        "Доступные команды: /start /menu /help /today /future /proxy /api /add_athlete /add_workout /add_set"
+        "Доступные команды: /start /menu /help /today /future /proxy /api /add_athlete /add_workout /add_set /plans /add_plan /get_contra /set_contra /pending"
     )
 
 @dp.message(Command("today"))
@@ -166,6 +187,8 @@ async def menu_callback(call: CallbackQuery):
         await add_workout_cmd(call.message)
     elif action == "add_set":
         await add_set_cmd(call.message)
+    elif action == "plans":
+        await list_plans_cmd(call.message)
     await call.answer()
 
 @dp.callback_query(lambda c: c.data.startswith("set:"))
@@ -193,6 +216,22 @@ async def set_callback(call: CallbackQuery):
             await call.answer("Ошибка соединения")
             return
     await call.answer("Обновлено")
+
+
+@dp.callback_query(lambda c: c.data.startswith("conf:"))
+async def confirm_callback(call: CallbackQuery):
+    _, set_id, status = call.data.split(":")
+    headers = await get_auth_headers(call.from_user)
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.post(f"/api/v1/sets/{set_id}/status", params={"status": status}, headers=headers)
+        except httpx.RequestError:
+            await call.answer("Ошибка соединения")
+            return
+    if resp.status_code == 200:
+        await call.answer("Готово")
+    else:
+        await call.answer("Ошибка")
 
 
 @dp.callback_query(lambda c: c.data.startswith("ex:"))
@@ -228,6 +267,99 @@ async def add_set_cmd(message: Message):
     await message.answer("Создаём сет. Отправьте ID тренировки:")
 
 
+@dp.message(Command("plans"))
+async def list_plans_cmd(message: Message):
+    headers = await get_auth_headers(message.from_user)
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.get("/api/v1/plans/", headers=headers)
+        except httpx.RequestError:
+            await message.answer("Не удалось подключиться к серверу")
+            return
+    if resp.status_code == 200 and resp.json():
+        text = "Список планов:\n" + "\n".join(f"{p['id']}: {p['title']}" for p in resp.json())
+    else:
+        text = "Планы отсутствуют"
+    await message.answer(text)
+
+
+@dp.message(Command("add_plan"))
+async def add_plan_cmd(message: Message):
+    user_states[message.chat.id] = {"cmd": "add_plan", "step": "title"}
+    await message.answer("Введите название плана:")
+
+
+@dp.message(Command("get_contra"))
+async def get_contra_cmd(message: Message):
+    parts = message.text.split(maxsplit=1)
+    if len(parts) != 2:
+        await message.answer("Использование: /get_contra <athlete_id>")
+        return
+    headers = await get_auth_headers(message.from_user)
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.get(f"/api/v1/athletes/{parts[1]}", headers=headers)
+        except httpx.RequestError:
+            await message.answer("Ошибка соединения")
+            return
+    if resp.status_code == 200:
+        contra = resp.json().get("contraindications") or "нет"
+        await message.answer(contra)
+    else:
+        await message.answer("Атлет не найден")
+
+
+@dp.message(Command("set_contra"))
+async def set_contra_cmd(message: Message):
+    parts = message.text.split(maxsplit=2)
+    if len(parts) < 3:
+        await message.answer("Использование: /set_contra <athlete_id> <текст>")
+        return
+    athlete_id = parts[1]
+    text = parts[2]
+    headers = await get_auth_headers(message.from_user)
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            res = await client.get(f"/api/v1/athletes/{athlete_id}", headers=headers)
+            if res.status_code != 200:
+                await message.answer("Атлет не найден")
+                return
+            name = res.json().get("name")
+            payload = {"name": name, "contraindications": text}
+            resp = await client.patch(f"/api/v1/athletes/{athlete_id}", json=payload, headers=headers)
+        except httpx.RequestError:
+            await message.answer("Ошибка соединения")
+            return
+    if resp.status_code == 200:
+        await message.answer("Обновлено")
+    else:
+        await message.answer("Ошибка")
+
+
+@dp.message(Command("pending"))
+async def pending_cmd(message: Message):
+    headers = await get_auth_headers(message.from_user)
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.get("/api/v1/sets/", headers=headers)
+        except httpx.RequestError:
+            await message.answer("Ошибка соединения")
+            return
+    if resp.status_code != 200:
+        await message.answer("Ошибка")
+        return
+    pending_sets = [s for s in resp.json() if s.get("status") == "pending"]
+    if not pending_sets:
+        await message.answer("Нет изменений для подтверждения")
+        return
+    for s in pending_sets:
+        kb = InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="Подтвердить", callback_data=f"conf:{s['id']}:confirmed"),
+            InlineKeyboardButton(text="Отклонить", callback_data=f"conf:{s['id']}:rejected")
+        ]])
+        await message.answer(f"set {s['id']}", reply_markup=kb)
+
+
 @dp.message()
 async def handle_flow(message: Message):
     state = user_states.get(message.chat.id)
@@ -250,7 +382,7 @@ async def handle_flow(message: Message):
                 except httpx.RequestError:
                     await message.answer("Не удалось подключиться к серверу")
                     user_states.pop(message.chat.id, None)
-                    await show_menu(message.chat.id)
+                    await show_menu(message.chat.id, message.from_user)
                     return
             if resp.status_code == 200:
                 data = resp.json()
@@ -258,7 +390,7 @@ async def handle_flow(message: Message):
             else:
                 await message.answer(f"Не удалось создать атлета: {resp.text}")
             user_states.pop(message.chat.id, None)
-            await show_menu(message.chat.id)
+            await show_menu(message.chat.id, message.from_user)
     elif state["cmd"] == "add_workout":
         if state["step"] == "athlete":
             state["athlete_id"] = message.text.strip()
@@ -291,7 +423,7 @@ async def handle_flow(message: Message):
                 except httpx.RequestError:
                     await message.answer("Не удалось подключиться к серверу")
                     user_states.pop(message.chat.id, None)
-                    await show_menu(message.chat.id)
+                    await show_menu(message.chat.id, message.from_user)
                     return
             if resp.status_code == 200:
                 data = resp.json()
@@ -299,7 +431,7 @@ async def handle_flow(message: Message):
             else:
                 await message.answer(f"Не удалось создать тренировку: {resp.text}")
             user_states.pop(message.chat.id, None)
-            await show_menu(message.chat.id)
+            await show_menu(message.chat.id, message.from_user)
     elif state["cmd"] == "add_set":
         if state["step"] == "workout":
             state["workout_id"] = int(message.text.strip())
@@ -309,7 +441,7 @@ async def handle_flow(message: Message):
                 except httpx.RequestError:
                     await message.answer("Не удалось подключиться к серверу")
                     user_states.pop(message.chat.id, None)
-                    await show_menu(message.chat.id)
+                    await show_menu(message.chat.id, message.from_user)
                     return
             if resp.status_code == 200 and resp.json():
                 ex_list = resp.json()
@@ -322,31 +454,60 @@ async def handle_flow(message: Message):
             else:
                 await message.answer("Библиотека упражнений пуста")
                 user_states.pop(message.chat.id, None)
-                await show_menu(message.chat.id)
+                await show_menu(message.chat.id, message.from_user)
         elif state["step"] == "metrics":
-            parts = message.text.split()
-            payload = {
-                "workout_id": state["workout_id"],
-                "exercise_id": state["exercise_id"],
-                "order": 1,
-            }
-            if len(parts) >= 2:
-                payload["weight"] = float(parts[0])
-                payload["reps"] = int(parts[1])
-            elif len(parts) == 1:
-                payload["distance_km"] = float(parts[0])
+            text = message.text.strip()
+            base = {"workout_id": state["workout_id"], "exercise_id": state["exercise_id"]}
             async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
                 try:
-                    resp = await client.post("/api/v1/sets/", json=payload, headers=headers)
+                    if "kg" in text and "×" in text:
+                        sets_data = parse_strength_cell(text)
+                        for item in sets_data:
+                            payload = base | item
+                            await client.post("/api/v1/sets/", json=payload, headers=headers)
+                        await message.answer("Сеты добавлены")
+                    else:
+                        parts = text.split()
+                        payload = base | {"order": 1}
+                        if len(parts) >= 2:
+                            payload["weight"] = float(parts[0])
+                            payload["reps"] = int(parts[1])
+                        elif len(parts) == 1:
+                            payload["distance_km"] = float(parts[0])
+                        resp = await client.post("/api/v1/sets/", json=payload, headers=headers)
+                        if resp.status_code == 200:
+                            await message.answer("Сет создан")
+                        else:
+                            await message.answer(f"Ошибка: {resp.text}")
                 except httpx.RequestError:
                     await message.answer("Не удалось подключиться к серверу")
                     user_states.pop(message.chat.id, None)
-                    await show_menu(message.chat.id)
+                    await show_menu(message.chat.id, message.from_user)
+                    return
+            user_states.pop(message.chat.id, None)
+            await show_menu(message.chat.id, message.from_user)
+    elif state["cmd"] == "add_plan":
+        if state["step"] == "title":
+            state["title"] = message.text.strip()
+            state["step"] = "notes"
+            await message.answer("Введите описание плана или '-' для пропуска:")
+        elif state["step"] == "notes":
+            notes = message.text.strip()
+            payload = {"title": state["title"]}
+            if notes and notes != "-":
+                payload["notes"] = notes
+            async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+                try:
+                    resp = await client.post("/api/v1/plans/", json=payload, headers=headers)
+                except httpx.RequestError:
+                    await message.answer("Не удалось подключиться к серверу")
+                    user_states.pop(message.chat.id, None)
+                    await show_menu(message.chat.id, message.from_user)
                     return
             if resp.status_code == 200:
-                await message.answer("Сет создан")
+                await message.answer("План создан")
             else:
                 await message.answer(f"Ошибка: {resp.text}")
             user_states.pop(message.chat.id, None)
-            await show_menu(message.chat.id)
+            await show_menu(message.chat.id, message.from_user)
 

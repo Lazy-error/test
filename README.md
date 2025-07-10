@@ -63,6 +63,8 @@ python run_bot.py
 
 After starting the script the bot will begin polling Telegram and will
 reply with `Hello! This is Trainer Bot` when you send the `/start` command.
+The `/start` or `/menu` command displays quick action buttons so a trainer can
+navigate the bot without typing raw API requests.
 
 ### Using API commands via Telegram
 

@@ -1,6 +1,7 @@
 from aiogram import Bot, Dispatcher
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import CommandStart, Command
+import json
 from datetime import date
 from ...services.db import get_session
 from ...models import Workout, Set
@@ -18,7 +19,7 @@ async def start(message: Message):
 
 @dp.message(Command("help"))
 async def help_cmd(message: Message):
-    await message.answer("Available commands: /start /help /today /future /proxy")
+    await message.answer("Available commands: /start /help /today /future /proxy /api")
 
 @dp.message(Command("today"))
 async def today_cmd(message: Message):
@@ -61,6 +62,31 @@ async def future_cmd(message: Message):
         return
     text = "Upcoming workouts:\n" + "\n".join(f"{w.date} {w.title}" for w in items)
     await message.answer(text)
+
+
+@dp.message(Command("api"))
+async def api_cmd(message: Message):
+    parts = message.text.split(maxsplit=3)
+    if len(parts) < 3:
+        await message.answer("Usage: /api <method> <path> [json]")
+        return
+    method = parts[1].upper()
+    path = parts[2]
+    data = None
+    if len(parts) == 4:
+        try:
+            data = json.loads(parts[3])
+        except json.JSONDecodeError:
+            await message.answer("Invalid JSON payload")
+            return
+    token = os.getenv("TRAINER_API_TOKEN")
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    async with httpx.AsyncClient(base_url="http://localhost:8000") as client:
+        resp = await client.request(method, path, json=data, headers=headers)
+    text = resp.text
+    if len(text) > 4000:
+        text = text[:3990] + "..."
+    await message.answer(f"Status {resp.status_code}\n{text}")
 
 @dp.callback_query(lambda c: c.data.startswith("set:"))
 async def set_callback(call: CallbackQuery):

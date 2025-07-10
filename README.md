@@ -54,7 +54,8 @@ Open <http://localhost:8000/docs> for the Swagger UI.
 
 The repository includes a minimal Telegram bot that responds to `/start`.
 Set your bot token in the `BOT_TOKEN` environment variable and run the helper
-script:
+script. The bot sends API requests to `http://localhost:8000` by default; set
+`API_BASE_URL` to override this if your backend runs elsewhere:
 
 ```bash
 export BOT_TOKEN="your-telegram-token"

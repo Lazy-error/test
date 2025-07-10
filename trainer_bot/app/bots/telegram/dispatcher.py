@@ -10,6 +10,7 @@ import os
 from typing import Dict, Any
 
 API_TOKEN = os.getenv("BOT_TOKEN", "123456:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi")
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 bot = Bot(API_TOKEN)
 dp = Dispatcher()
@@ -107,8 +108,12 @@ async def api_cmd(message: Message):
             return
     token = os.getenv("TRAINER_API_TOKEN")
     headers = {"Authorization": f"Bearer {token}"} if token else {}
-    async with httpx.AsyncClient(base_url="http://localhost:8000") as client:
-        resp = await client.request(method, path, json=data, headers=headers)
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.request(method, path, json=data, headers=headers)
+        except httpx.RequestError:
+            await message.answer("Не удалось подключиться к серверу")
+            return
     text = resp.text
     if len(text) > 4000:
         text = text[:3990] + "..."
@@ -136,7 +141,7 @@ async def menu_callback(call: CallbackQuery):
 async def set_callback(call: CallbackQuery):
     _, set_id, weight, reps = call.data.split(":")
     set_id = int(set_id)
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
         with get_session() as session:
             obj = session.get(Set, set_id)
         if not obj:
@@ -149,8 +154,12 @@ async def set_callback(call: CallbackQuery):
             "reps": int(reps),
             "order": obj.order,
         }
-        url = f"http://localhost:8000/api/v1/sets/{set_id}"
-        await client.patch(url, json=payload)
+        url = f"/api/v1/sets/{set_id}"
+        try:
+            await client.patch(url, json=payload)
+        except httpx.RequestError:
+            await call.answer("Ошибка соединения")
+            return
     await call.answer("Обновлено")
 
 
@@ -177,15 +186,21 @@ async def handle_flow(message: Message):
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     if state["cmd"] == "add_athlete" and state["step"] == "name":
         name = message.text.strip()
-        async with httpx.AsyncClient(base_url="http://localhost:8000") as client:
-            resp = await client.post("/api/v1/athletes/", json={"name": name}, headers=headers)
-        if resp.status_code == 200:
-            data = resp.json()
-            await message.answer(f"Атлет создан с id {data.get('id')}")
-        else:
-            await message.answer(f"Не удалось создать атлета: {resp.text}")
-        user_states.pop(message.chat.id, None)
-        await show_menu(message.chat.id)
+        async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+            try:
+                resp = await client.post("/api/v1/athletes/", json={"name": name}, headers=headers)
+            except httpx.RequestError:
+                await message.answer("Не удалось подключиться к серверу")
+                user_states.pop(message.chat.id, None)
+                await show_menu(message.chat.id)
+                return
+            if resp.status_code == 200:
+                data = resp.json()
+                await message.answer(f"Атлет создан с id {data.get('id')}")
+            else:
+                await message.answer(f"Не удалось создать атлета: {resp.text}")
+            user_states.pop(message.chat.id, None)
+            await show_menu(message.chat.id)
     elif state["cmd"] == "add_workout":
         if state["step"] == "athlete":
             state["athlete_id"] = message.text.strip()
@@ -207,8 +222,14 @@ async def handle_flow(message: Message):
                 "type": state["type"],
                 "title": state["title"],
             }
-            async with httpx.AsyncClient(base_url="http://localhost:8000") as client:
-                resp = await client.post("/api/v1/workouts/", json=payload, headers=headers)
+            async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+                try:
+                    resp = await client.post("/api/v1/workouts/", json=payload, headers=headers)
+                except httpx.RequestError:
+                    await message.answer("Не удалось подключиться к серверу")
+                    user_states.pop(message.chat.id, None)
+                    await show_menu(message.chat.id)
+                    return
             if resp.status_code == 200:
                 data = resp.json()
                 await message.answer(f"Тренировка создана с id {data.get('id')}")

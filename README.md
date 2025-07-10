@@ -66,6 +66,9 @@ reply with `Hello! This is Trainer Bot` when you send the `/start` command.
 The `/start` or `/menu` command displays quick action buttons so a trainer can
 navigate the bot without typing raw API requests.
 
+The bot now supports interactive creation of athletes and workouts. Use
+`/add_athlete` or `/add_workout` from Telegram and follow the prompts.
+
 ### Using API commands via Telegram
 
 The bot exposes an `/api` command so the trainer can call any backend endpoint

@@ -33,3 +33,21 @@ def test_create_exercise():
     data = res.json()
     assert data["name"] == "Squat"
     assert data["metric_type"] == "strength"
+
+
+def test_exercise_crud():
+    headers = _auth_headers()
+    res = client.post("/api/v1/exercises/", json={"name": "Row", "metric_type": "strength"}, headers=headers)
+    ex_id = res.json()["id"]
+
+    res = client.get("/api/v1/exercises/", headers=headers)
+    assert any(e["id"] == ex_id for e in res.json())
+
+    res = client.get(f"/api/v1/exercises/{ex_id}", headers=headers)
+    assert res.status_code == 200
+
+    res = client.patch(f"/api/v1/exercises/{ex_id}", json={"name": "Row2", "metric_type": "strength"}, headers=headers)
+    assert res.json()["name"] == "Row2"
+
+    res = client.delete(f"/api/v1/exercises/{ex_id}", headers=headers)
+    assert res.json()["status"] == "deleted"

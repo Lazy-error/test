@@ -22,6 +22,14 @@ def _telegram_payload(user_id: int = 1):
     return data
 
 
+def _bot_payload(user_id: int = 2):
+    return {
+        "telegram_id": user_id,
+        "first_name": "Test",
+        "bot_token": BOT_TOKEN,
+    }
+
+
 def test_telegram_auth_and_refresh():
     payload = _telegram_payload()
     res = client.post("/api/v1/auth/telegram", json=payload)
@@ -35,3 +43,11 @@ def test_telegram_auth_and_refresh():
     new_tokens = res2.json()
     assert new_tokens["refresh_token"] != tokens["refresh_token"]
     assert "access_token" in new_tokens
+
+
+def test_bot_auth():
+    res = client.post("/api/v1/auth/bot", json=_bot_payload())
+    assert res.status_code == 200
+    data = res.json()
+    assert "access_token" in data
+    assert "refresh_token" in data

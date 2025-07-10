@@ -17,6 +17,34 @@ dp = Dispatcher()
 
 # simple in-memory state storage for interactive flows
 user_states: Dict[int, Dict[str, Any]] = {}
+user_tokens: Dict[int, str] = {}
+
+
+async def get_auth_headers(tg_user) -> Dict[str, str]:
+    token = os.getenv("TRAINER_API_TOKEN")
+    if token:
+        return {"Authorization": f"Bearer {token}"}
+    cached = user_tokens.get(tg_user.id)
+    if cached:
+        return {"Authorization": f"Bearer {cached}"}
+    payload = {
+        "telegram_id": tg_user.id,
+        "first_name": tg_user.first_name,
+        "last_name": tg_user.last_name,
+        "username": tg_user.username,
+        "bot_token": API_TOKEN,
+    }
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.post("/api/v1/auth/bot", json=payload)
+        except httpx.RequestError:
+            return {}
+    if resp.status_code == 200:
+        token = resp.json().get("access_token")
+        if token:
+            user_tokens[tg_user.id] = token
+            return {"Authorization": f"Bearer {token}"}
+    return {}
 
 
 async def show_menu(chat_id: int):
@@ -106,8 +134,7 @@ async def api_cmd(message: Message):
         except json.JSONDecodeError:
             await message.answer("Некорректный JSON")
             return
-    token = os.getenv("TRAINER_API_TOKEN")
-    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    headers = await get_auth_headers(message.from_user)
     async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
         try:
             resp = await client.request(method, path, json=data, headers=headers)
@@ -141,6 +168,7 @@ async def menu_callback(call: CallbackQuery):
 async def set_callback(call: CallbackQuery):
     _, set_id, weight, reps = call.data.split(":")
     set_id = int(set_id)
+    headers = await get_auth_headers(call.from_user)
     async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
         with get_session() as session:
             obj = session.get(Set, set_id)
@@ -156,7 +184,7 @@ async def set_callback(call: CallbackQuery):
         }
         url = f"/api/v1/sets/{set_id}"
         try:
-            await client.patch(url, json=payload)
+            await client.patch(url, json=payload, headers=headers)
         except httpx.RequestError:
             await call.answer("Ошибка соединения")
             return
@@ -182,8 +210,7 @@ async def handle_flow(message: Message):
     state = user_states.get(message.chat.id)
     if not state:
         return
-    token = os.getenv("TRAINER_API_TOKEN")
-    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    headers = await get_auth_headers(message.from_user)
     if state["cmd"] == "add_athlete" and state["step"] == "name":
         name = message.text.strip()
         async with httpx.AsyncClient(base_url=API_BASE_URL) as client:

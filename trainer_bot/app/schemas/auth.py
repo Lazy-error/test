@@ -15,3 +15,11 @@ class TokenPair(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str
+
+
+class BotAuth(BaseModel):
+    telegram_id: int
+    first_name: str | None = None
+    last_name: str | None = None
+    username: str | None = None
+    bot_token: str

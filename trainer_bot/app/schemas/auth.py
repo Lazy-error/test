@@ -9,6 +9,7 @@ class TelegramAuth(BaseModel):
     auth_date: int
     hash: str
     role: Role | None = None
+    invite_token: str | None = None
 
 class TokenPair(BaseModel):
     access_token: str
@@ -26,6 +27,7 @@ class BotAuth(BaseModel):
     username: str | None = None
     bot_token: str
     role: Role | None = None
+    invite_token: str | None = None
 
 class RoleUpdate(BaseModel):
     role: Role

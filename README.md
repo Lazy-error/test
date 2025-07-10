@@ -63,3 +63,20 @@ python run_bot.py
 
 After starting the script the bot will begin polling Telegram and will
 reply with `Hello! This is Trainer Bot` when you send the `/start` command.
+
+### Using API commands via Telegram
+
+The bot exposes an `/api` command so the trainer can call any backend endpoint
+directly from Telegram. Usage:
+
+```text
+/api <method> <path> [json]
+```
+
+Example:
+
+```text
+/api get /api/v1/workouts
+```
+
+To authenticate requests, set `TRAINER_API_TOKEN` with a valid bearer token.

@@ -10,6 +10,7 @@ This repository contains a simplified skeleton of the "Trainer+" Telegram bot ba
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+export BOT_TOKEN="your-telegram-token"
 uvicorn trainer_bot.app.main:app --reload
 ```
 
@@ -19,6 +20,7 @@ uvicorn trainer_bot.app.main:app --reload
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
+set BOT_TOKEN="your-telegram-token"
 uvicorn trainer_bot.app.main:app --reload
 ```
 
@@ -27,6 +29,8 @@ uvicorn trainer_bot.app.main:app --reload
 ```bash
 docker-compose up --build
 ```
+The compose file expects `BOT_TOKEN` to be set in your environment so the
+backend can authorize Telegram users.
 
 ### PostgreSQL with Docker Compose
 
@@ -47,6 +51,14 @@ docker exec -it test-db-1 psql -U trainer -d trainer -c "CREATE EXTENSION IF NOT
 ```
 
 Replace `test-db-1` with the name of your running container if it differs.
+
+Before starting the backend, export the same `BOT_TOKEN` that the bot uses so
+`/api/v1/auth/bot` can authenticate:
+
+```bash
+export BOT_TOKEN="your-telegram-token"
+uvicorn trainer_bot.app.main:app --reload
+```
 
 Open <http://localhost:8000/docs> for the Swagger UI.
 
@@ -73,6 +85,16 @@ When adding a workout you will be asked for the athlete ID (a numeric
 identifier), the workout date in `YYYY-MM-DD` format, a type such as
 `strength` or `cardio`, and a short title. After the object is created the
 bot returns to the main menu.
+
+### Authorizing via Telegram
+
+At the first interaction the bot requests an API token from the backend by
+calling `/api/v1/auth/bot`. This request includes your Telegram profile and
+the `BOT_TOKEN`. Make sure the backend runs with the same `BOT_TOKEN`; otherwise
+authentication fails and subsequent commands return `403 FORBIDDEN`. When the
+token is issued a new user with the `user` role is created in the database. Any
+endpoint that requires a different role will also return `403` until the user's
+role is updated.
 
 ### Using API commands via Telegram
 

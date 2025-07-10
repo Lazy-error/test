@@ -7,11 +7,15 @@ from ...services.db import get_session
 from ...models import Workout, Set
 import httpx
 import os
+from typing import Dict, Any
 
 API_TOKEN = os.getenv("BOT_TOKEN", "123456:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi")
 
 bot = Bot(API_TOKEN)
 dp = Dispatcher()
+
+# simple in-memory state storage for interactive flows
+user_states: Dict[int, Dict[str, Any]] = {}
 
 
 async def show_menu(chat_id: int):
@@ -19,6 +23,8 @@ async def show_menu(chat_id: int):
         inline_keyboard=[
             [InlineKeyboardButton(text="Today's workouts", callback_data="cmd:today")],
             [InlineKeyboardButton(text="Upcoming workouts", callback_data="cmd:future")],
+            [InlineKeyboardButton(text="Add athlete", callback_data="cmd:add_athlete")],
+            [InlineKeyboardButton(text="Add workout", callback_data="cmd:add_workout")],
             [InlineKeyboardButton(text="Send message", callback_data="cmd:proxy")],
             [InlineKeyboardButton(text="Help", callback_data="cmd:help")],
         ]
@@ -37,7 +43,9 @@ async def menu_cmd(message: Message):
 
 @dp.message(Command("help"))
 async def help_cmd(message: Message):
-    await message.answer("Available commands: /start /menu /help /today /future /proxy /api")
+    await message.answer(
+        "Available commands: /start /menu /help /today /future /proxy /api /add_athlete /add_workout"
+    )
 
 @dp.message(Command("today"))
 async def today_cmd(message: Message):
@@ -118,6 +126,10 @@ async def menu_callback(call: CallbackQuery):
         await help_cmd(call.message)
     elif action == "proxy":
         await call.message.answer("Send message using /proxy <text>")
+    elif action == "add_athlete":
+        await add_athlete_cmd(call.message)
+    elif action == "add_workout":
+        await add_workout_cmd(call.message)
     await call.answer()
 
 @dp.callback_query(lambda c: c.data.startswith("set:"))
@@ -140,4 +152,64 @@ async def set_callback(call: CallbackQuery):
         url = f"http://localhost:8000/api/v1/sets/{set_id}"
         await client.patch(url, json=payload)
     await call.answer("Updated")
+
+
+@dp.message(Command("add_athlete"))
+async def add_athlete_cmd(message: Message):
+    user_states[message.chat.id] = {"cmd": "add_athlete", "step": "name"}
+    await message.answer("Enter athlete name:")
+
+
+@dp.message(Command("add_workout"))
+async def add_workout_cmd(message: Message):
+    user_states[message.chat.id] = {"cmd": "add_workout", "step": "athlete"}
+    await message.answer("Enter athlete id:")
+
+
+@dp.message()
+async def handle_flow(message: Message):
+    state = user_states.get(message.chat.id)
+    if not state:
+        return
+    token = os.getenv("TRAINER_API_TOKEN")
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    if state["cmd"] == "add_athlete" and state["step"] == "name":
+        name = message.text.strip()
+        async with httpx.AsyncClient(base_url="http://localhost:8000") as client:
+            resp = await client.post("/api/v1/athletes/", json={"name": name}, headers=headers)
+        if resp.status_code == 200:
+            data = resp.json()
+            await message.answer(f"Athlete created with id {data.get('id')}")
+        else:
+            await message.answer(f"Failed to create athlete: {resp.text}")
+        user_states.pop(message.chat.id, None)
+    elif state["cmd"] == "add_workout":
+        if state["step"] == "athlete":
+            state["athlete_id"] = message.text.strip()
+            state["step"] = "date"
+            await message.answer("Enter date (YYYY-MM-DD):")
+        elif state["step"] == "date":
+            state["date"] = message.text.strip()
+            state["step"] = "type"
+            await message.answer("Enter type:")
+        elif state["step"] == "type":
+            state["type"] = message.text.strip()
+            state["step"] = "title"
+            await message.answer("Enter title:")
+        elif state["step"] == "title":
+            state["title"] = message.text.strip()
+            payload = {
+                "athlete_id": int(state["athlete_id"]),
+                "date": state["date"],
+                "type": state["type"],
+                "title": state["title"],
+            }
+            async with httpx.AsyncClient(base_url="http://localhost:8000") as client:
+                resp = await client.post("/api/v1/workouts/", json=payload, headers=headers)
+            if resp.status_code == 200:
+                data = resp.json()
+                await message.answer(f"Workout created with id {data.get('id')}")
+            else:
+                await message.answer(f"Failed to create workout: {resp.text}")
+            user_states.pop(message.chat.id, None)
 

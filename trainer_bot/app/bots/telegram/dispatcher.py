@@ -13,13 +13,31 @@ API_TOKEN = os.getenv("BOT_TOKEN", "123456:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi")
 bot = Bot(API_TOKEN)
 dp = Dispatcher()
 
+
+async def show_menu(chat_id: int):
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Today's workouts", callback_data="cmd:today")],
+            [InlineKeyboardButton(text="Upcoming workouts", callback_data="cmd:future")],
+            [InlineKeyboardButton(text="Send message", callback_data="cmd:proxy")],
+            [InlineKeyboardButton(text="Help", callback_data="cmd:help")],
+        ]
+    )
+    await bot.send_message(chat_id, "Choose an action:", reply_markup=kb)
+
 @dp.message(CommandStart())
 async def start(message: Message):
     await message.answer("Hello! This is Trainer Bot")
+    await show_menu(message.chat.id)
+
+
+@dp.message(Command("menu"))
+async def menu_cmd(message: Message):
+    await show_menu(message.chat.id)
 
 @dp.message(Command("help"))
 async def help_cmd(message: Message):
-    await message.answer("Available commands: /start /help /today /future /proxy /api")
+    await message.answer("Available commands: /start /menu /help /today /future /proxy /api")
 
 @dp.message(Command("today"))
 async def today_cmd(message: Message):
@@ -87,6 +105,20 @@ async def api_cmd(message: Message):
     if len(text) > 4000:
         text = text[:3990] + "..."
     await message.answer(f"Status {resp.status_code}\n{text}")
+
+
+@dp.callback_query(lambda c: c.data.startswith("cmd:"))
+async def menu_callback(call: CallbackQuery):
+    action = call.data.split(":", 1)[1]
+    if action == "today":
+        await today_cmd(call.message)
+    elif action == "future":
+        await future_cmd(call.message)
+    elif action == "help":
+        await help_cmd(call.message)
+    elif action == "proxy":
+        await call.message.answer("Send message using /proxy <text>")
+    await call.answer()
 
 @dp.callback_query(lambda c: c.data.startswith("set:"))
 async def set_callback(call: CallbackQuery):

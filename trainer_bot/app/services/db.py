@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 # Default to a local PostgreSQL database. This can be overridden with the
@@ -29,10 +29,25 @@ Base = declarative_base()
 # Import models so that metadata is populated before creating tables
 from .. import models  # noqa: F401,E402
 
-Base.metadata.create_all(bind=engine)
+_initialized = False
+
+
+def _init_db():
+    global _initialized
+    if _initialized:
+        return
+    Base.metadata.create_all(bind=engine)
+    if engine.url.get_backend_name() == "sqlite":
+        inspector = inspect(engine)
+        workout_cols = {c["name"] for c in inspector.get_columns("workouts")}
+        if "time" not in workout_cols:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE workouts ADD COLUMN time TIME"))
+    _initialized = True
 
 def get_engine():
     return engine
 
 def get_session():
+    _init_db()
     return SessionLocal()

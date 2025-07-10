@@ -4,7 +4,7 @@ from typing import List
 from ..schemas.workout import WorkoutCreate, Workout as WorkoutSchema
 from ..services.db import get_session
 from ..models import Workout, Set
-from .auth import get_current_user
+from .auth import get_current_user, require_roles, Role
 
 router = APIRouter(prefix="/workouts", tags=["workouts"])
 
@@ -14,7 +14,7 @@ async def list_workouts(user=Depends(get_current_user)):
         return session.query(Workout).all()
 
 @router.post("/", response_model=WorkoutSchema)
-async def create_workout(workout: WorkoutCreate, user=Depends(get_current_user)):
+async def create_workout(workout: WorkoutCreate, user=Depends(require_roles([Role.coach, Role.superadmin]))):
     with get_session() as session:
         obj = Workout(**workout.model_dump())
         session.add(obj)
@@ -31,7 +31,7 @@ async def get_workout(workout_id: int, user=Depends(get_current_user)):
         return obj
 
 @router.patch("/{workout_id}", response_model=WorkoutSchema)
-async def update_workout(workout_id: int, workout: WorkoutCreate, user=Depends(get_current_user)):
+async def update_workout(workout_id: int, workout: WorkoutCreate, user=Depends(require_roles([Role.coach, Role.superadmin]))):
     with get_session() as session:
         obj = session.get(Workout, workout_id)
         if not obj:
@@ -43,7 +43,7 @@ async def update_workout(workout_id: int, workout: WorkoutCreate, user=Depends(g
         return obj
 
 @router.delete("/{workout_id}")
-async def delete_workout(workout_id: int, user=Depends(get_current_user)):
+async def delete_workout(workout_id: int, user=Depends(require_roles([Role.coach, Role.superadmin]))):
     with get_session() as session:
         obj = session.get(Workout, workout_id)
         if obj:
@@ -57,7 +57,7 @@ async def workout_sets(workout_id: int, user=Depends(get_current_user)):
         return session.query(Set).filter(Set.workout_id == workout_id).all()
 
 @router.post("/{workout_id}/sets", response_model=dict)
-async def create_workout_set(workout_id: int, set_in: dict, user=Depends(get_current_user)):
+async def create_workout_set(workout_id: int, set_in: dict, user=Depends(require_roles([Role.coach, Role.superadmin]))):
     with get_session() as session:
         obj = Set(workout_id=workout_id, **set_in)
         session.add(obj)

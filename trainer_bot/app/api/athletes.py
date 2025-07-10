@@ -4,17 +4,17 @@ from typing import List
 from ..schemas.athlete import AthleteCreate, Athlete as AthleteSchema
 from ..services.db import get_session
 from ..models import Athlete, Workout
-from .auth import get_current_user
+from .auth import get_current_user, require_roles, Role
 
 router = APIRouter(prefix="/athletes", tags=["athletes"])
 
 @router.get("/", response_model=List[AthleteSchema])
-async def list_athletes(user=Depends(get_current_user)):
+async def list_athletes(user=Depends(require_roles([Role.coach, Role.superadmin]))):
     with get_session() as session:
         return session.query(Athlete).all()
 
 @router.post("/", response_model=AthleteSchema)
-async def create_athlete(athlete: AthleteCreate, user=Depends(get_current_user)):
+async def create_athlete(athlete: AthleteCreate, user=Depends(require_roles([Role.coach, Role.superadmin]))):
     with get_session() as session:
         obj = Athlete(**athlete.model_dump())
         session.add(obj)
@@ -31,7 +31,7 @@ async def get_athlete(athlete_id: int, user=Depends(get_current_user)):
         return obj
 
 @router.patch("/{athlete_id}", response_model=AthleteSchema)
-async def update_athlete(athlete_id: int, athlete: AthleteCreate, user=Depends(get_current_user)):
+async def update_athlete(athlete_id: int, athlete: AthleteCreate, user=Depends(require_roles([Role.coach, Role.superadmin]))):
     with get_session() as session:
         obj = session.get(Athlete, athlete_id)
         if not obj:
@@ -43,7 +43,7 @@ async def update_athlete(athlete_id: int, athlete: AthleteCreate, user=Depends(g
         return obj
 
 @router.delete("/{athlete_id}")
-async def delete_athlete(athlete_id: int, user=Depends(get_current_user)):
+async def delete_athlete(athlete_id: int, user=Depends(require_roles([Role.coach, Role.superadmin]))):
     with get_session() as session:
         obj = session.get(Athlete, athlete_id)
         if obj:

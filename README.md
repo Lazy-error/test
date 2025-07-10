@@ -92,9 +92,9 @@ At the first interaction the bot requests an API token from the backend by
 calling `/api/v1/auth/bot`. This request includes your Telegram profile and
 the `BOT_TOKEN`. Make sure the backend runs with the same `BOT_TOKEN`; otherwise
 authentication fails and subsequent commands return `403 FORBIDDEN`. When the
-token is issued a new user with the `user` role is created in the database. Any
-endpoint that requires a different role will also return `403` until the user's
-role is updated.
+token is issued a new user with the `athlete` role is created in the database.
+The available roles are `coach`, `athlete` and `superadmin`. Any endpoint that
+requires a different role will return `403` until the user's role is updated.
 
 ### Using API commands via Telegram
 

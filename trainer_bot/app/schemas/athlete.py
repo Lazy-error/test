@@ -2,6 +2,7 @@ from pydantic import BaseModel
 
 class AthleteBase(BaseModel):
     name: str
+    contraindications: str | None = None
 
 class AthleteCreate(AthleteBase):
     pass

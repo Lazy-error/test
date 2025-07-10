@@ -211,16 +211,24 @@ async def handle_flow(message: Message):
     if not state:
         return
     headers = await get_auth_headers(message.from_user)
-    if state["cmd"] == "add_athlete" and state["step"] == "name":
-        name = message.text.strip()
-        async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
-            try:
-                resp = await client.post("/api/v1/athletes/", json={"name": name}, headers=headers)
-            except httpx.RequestError:
-                await message.answer("Не удалось подключиться к серверу")
-                user_states.pop(message.chat.id, None)
-                await show_menu(message.chat.id)
-                return
+    if state["cmd"] == "add_athlete":
+        if state["step"] == "name":
+            state["name"] = message.text.strip()
+            state["step"] = "contraindications"
+            await message.answer("Укажите противопоказания (или оставьте пустым):")
+        elif state["step"] == "contraindications":
+            payload = {"name": state["name"]}
+            text = message.text.strip()
+            if text:
+                payload["contraindications"] = text
+            async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+                try:
+                    resp = await client.post("/api/v1/athletes/", json=payload, headers=headers)
+                except httpx.RequestError:
+                    await message.answer("Не удалось подключиться к серверу")
+                    user_states.pop(message.chat.id, None)
+                    await show_menu(message.chat.id)
+                    return
             if resp.status_code == 200:
                 data = resp.json()
                 await message.answer(f"Атлет создан с id {data.get('id')}")

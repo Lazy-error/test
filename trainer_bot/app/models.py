@@ -29,6 +29,7 @@ class Athlete(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     contraindications = Column(String(250))
+    is_active = Column(Boolean, default=True, nullable=False)
 
     workouts = relationship('Workout', back_populates='athlete')
 

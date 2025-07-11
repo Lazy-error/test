@@ -12,7 +12,9 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 def run_migrations_offline():
-    url = os.getenv("DATABASE_URL", "sqlite:///./trainer_bot.db")
+    url = os.getenv(
+        "DATABASE_URL", "postgresql://trainer:trainer@localhost:5432/trainer"
+    )
     context.configure(
         url=url,
         target_metadata=target_metadata,

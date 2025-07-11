@@ -104,6 +104,13 @@ zone. If unset, the application defaults to **Europe/Moscow**.
 
 ### Running tests
 
+Install the development requirements first so that packages such as
+`testing.postgresql` are available:
+
+```bash
+pip install -r requirements.txt
+```
+
 The test suite expects a Telegram bot token via the `BOT_TOKEN` environment
 variable. Any value will work for local testing:
 

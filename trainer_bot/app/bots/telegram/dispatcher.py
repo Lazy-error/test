@@ -105,7 +105,6 @@ async def show_menu(chat_id: int, tg_user=None):
             [InlineKeyboardButton(text="Планы", callback_data="cmd:plans")],
             [InlineKeyboardButton(text="Инвайт", callback_data="cmd:invite")],
         ])
-    keyboard.append([InlineKeyboardButton(text="Отправить сообщение", callback_data="cmd:proxy")])
     keyboard.append([InlineKeyboardButton(text="Помощь", callback_data="cmd:help")])
     kb = InlineKeyboardMarkup(inline_keyboard=keyboard)
     await bot.send_message(chat_id, "Выберите действие:", reply_markup=kb)
@@ -127,7 +126,7 @@ async def menu_cmd(message: Message):
 @dp.message(Command("help"))
 async def help_cmd(message: Message):
     await message.answer(
-        "Доступные команды: /start /menu /help /today /future /proxy /invite /signup "
+        "Доступные команды: /start /menu /help /today /future /invite /signup "
         "/add_athlete /add_workout /add_set /plans /add_plan /get_contra /set_contra /pending "
         "/messages /notifications /ex_list /ex_add /ex_get /ex_update /ex_delete "
         "/workouts /workout_get /workout_update /workout_delete "
@@ -153,19 +152,6 @@ async def today_cmd(message: Message):
     else:
         await message.answer("На сегодня тренировок нет.")
 
-@dp.message(Command("proxy"))
-async def proxy_cmd(message: Message):
-    parts = message.text.split(maxsplit=1)
-    if len(parts) < 2:
-        await message.answer("Использование: /proxy <текст>")
-        return
-    text = parts[1]
-    trainer_chat = os.getenv("TRAINER_CHAT_ID")
-    athlete_chat = os.getenv("ATHLETE_CHAT_ID")
-    dest = athlete_chat if str(message.chat.id) == trainer_chat else trainer_chat
-    if dest:
-        await bot.send_message(dest, text)
-
 @dp.message(Command("future"))
 async def future_cmd(message: Message):
     today = date.today()
@@ -188,8 +174,6 @@ async def menu_callback(call: CallbackQuery):
         await future_cmd(call.message)
     elif action == "help":
         await help_cmd(call.message)
-    elif action == "proxy":
-        await call.message.answer("Отправьте сообщение с помощью /proxy <текст>")
     elif action == "add_athlete":
         await add_athlete_cmd(call.message)
     elif action == "add_workout":

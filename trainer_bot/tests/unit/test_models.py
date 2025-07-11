@@ -1,5 +1,13 @@
 import datetime
-from trainer_bot.app.models import Role, Invite, User, Workout, Athlete
+from trainer_bot.app.models import (
+    Role,
+    Invite,
+    User,
+    Workout,
+    Athlete,
+    Exercise,
+    Set,
+)
 import uuid
 from trainer_bot.app.services.db import get_session
 
@@ -64,5 +72,38 @@ def test_athlete_is_active_flag():
         session.commit()
         session.refresh(athlete)
         assert athlete.is_active is False
+
+
+def test_set_rest_sec_persisted():
+    with get_session() as session:
+        athlete = Athlete(name="R")
+        ex = Exercise(name="E", metric_type="strength")
+        session.add_all([athlete, ex])
+        session.commit()
+        session.refresh(athlete)
+        session.refresh(ex)
+
+        w = Workout(
+            athlete_id=athlete.id,
+            date=datetime.date(2025, 1, 2),
+            type="strength",
+            title="T",
+        )
+        session.add(w)
+        session.commit()
+        session.refresh(w)
+
+        s = Set(
+            workout_id=w.id,
+            exercise_id=ex.id,
+            weight=60,
+            reps=5,
+            order=1,
+            rest_sec=90,
+        )
+        session.add(s)
+        session.commit()
+        session.refresh(s)
+        assert s.rest_sec == 90
 
 

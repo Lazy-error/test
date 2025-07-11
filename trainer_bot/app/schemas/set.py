@@ -8,6 +8,7 @@ class SetBase(BaseModel):
     distance_km: float | None = None
     duration_sec: int | None = None
     avg_hr: int | None = None
+    rest_sec: int | None = None
     order: int
     status: str | None = "confirmed"
 
@@ -28,5 +29,6 @@ class SetUpdate(BaseModel):
     distance_km: float | None = None
     duration_sec: int | None = None
     avg_hr: int | None = None
+    rest_sec: int | None = None
     order: int | None = None
     status: str | None = None

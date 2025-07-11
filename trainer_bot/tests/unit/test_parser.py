@@ -34,6 +34,11 @@ def test_parse_strength_cell_with_spaces():
     assert sets[0]["weight"] == 75.0
 
 
+def test_parse_strength_cell_with_rest():
+    sets = parse_strength_cell("50 kg ×5 ×2 60")
+    assert all(s["rest_sec"] == 60 for s in sets)
+
+
 def test_parse_cardio_cell_distance_only():
     data = parse_cardio_cell("3 km")
     assert data["distance_km"] == 3.0

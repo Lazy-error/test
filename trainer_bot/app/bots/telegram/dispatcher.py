@@ -127,7 +127,7 @@ async def menu_cmd(message: Message):
 @dp.message(Command("help"))
 async def help_cmd(message: Message):
     await message.answer(
-        "Доступные команды: /start /menu /help /today /future /proxy /api /invite /signup /add_athlete /add_workout /add_set /plans /add_plan /get_contra /set_contra /pending"
+        "Доступные команды: /start /menu /help /today /future /proxy /invite /signup /add_athlete /add_workout /add_set /plans /add_plan /get_contra /set_contra /pending"
     )
 
 @dp.message(Command("today"))
@@ -173,33 +173,6 @@ async def future_cmd(message: Message):
     text = "Ближайшие тренировки:\n" + "\n".join(f"{w.date} {w.title}" for w in items)
     await message.answer(text)
 
-
-@dp.message(Command("api"))
-async def api_cmd(message: Message):
-    parts = message.text.split(maxsplit=3)
-    if len(parts) < 3:
-        await message.answer("Использование: /api <method> <path> [json]")
-        return
-    method = parts[1].upper()
-    path = parts[2]
-    data = None
-    if len(parts) == 4:
-        try:
-            data = json.loads(parts[3])
-        except json.JSONDecodeError:
-            await message.answer("Некорректный JSON")
-            return
-    headers = await get_auth_headers(message.from_user)
-    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
-        try:
-            resp = await client.request(method, path, json=data, headers=headers)
-        except httpx.RequestError:
-            await message.answer("Не удалось подключиться к серверу")
-            return
-    text = resp.text
-    if len(text) > 4000:
-        text = text[:3990] + "..."
-    await message.answer(f"Статус {resp.status_code}\n{text}")
 
 
 @dp.callback_query(lambda c: c.data.startswith("cmd:"))

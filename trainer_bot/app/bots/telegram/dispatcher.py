@@ -62,6 +62,33 @@ async def _get_role(tg_user) -> str:
     return "athlete"
 
 
+async def _signup_with_invite(tg_user, token: str, message: Message) -> bool:
+    payload = {
+        "invite_token": token,
+        "telegram_id": tg_user.id,
+        "first_name": tg_user.first_name,
+        "last_name": tg_user.last_name,
+        "username": tg_user.username,
+        "bot_token": API_TOKEN,
+    }
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.post("/api/v1/invites/bot", json=payload)
+        except httpx.RequestError:
+            await message.answer("Не удалось подключиться к серверу")
+            return False
+    if resp.status_code == 200:
+        access = resp.json().get("access_token")
+        if access:
+            user_tokens[tg_user.id] = access
+        await message.answer("Регистрация успешна")
+        return True
+    if resp.status_code == 400:
+        await message.answer("Инвайт просрочен или уже использован")
+    else:
+        await message.answer(f"Ошибка регистрации: {resp.text}")
+    return False
+
 async def show_menu(chat_id: int, tg_user=None):
     role = "athlete"
     if tg_user:
@@ -76,6 +103,7 @@ async def show_menu(chat_id: int, tg_user=None):
             [InlineKeyboardButton(text="Добавить тренировку", callback_data="cmd:add_workout")],
             [InlineKeyboardButton(text="Добавить сет", callback_data="cmd:add_set")],
             [InlineKeyboardButton(text="Планы", callback_data="cmd:plans")],
+            [InlineKeyboardButton(text="Инвайт", callback_data="cmd:invite")],
         ])
     keyboard.append([InlineKeyboardButton(text="Отправить сообщение", callback_data="cmd:proxy")])
     keyboard.append([InlineKeyboardButton(text="Помощь", callback_data="cmd:help")])
@@ -84,6 +112,10 @@ async def show_menu(chat_id: int, tg_user=None):
 
 @dp.message(CommandStart())
 async def start(message: Message):
+    parts = message.text.split(maxsplit=1)
+    token = parts[1] if len(parts) == 2 else None
+    if token and message.from_user.id not in user_tokens:
+        await _signup_with_invite(message.from_user, token, message)
     await message.answer("Привет! Это Trainer Bot")
     await show_menu(message.chat.id, message.from_user)
 
@@ -95,7 +127,7 @@ async def menu_cmd(message: Message):
 @dp.message(Command("help"))
 async def help_cmd(message: Message):
     await message.answer(
-        "Доступные команды: /start /menu /help /today /future /proxy /api /add_athlete /add_workout /add_set /plans /add_plan /get_contra /set_contra /pending"
+        "Доступные команды: /start /menu /help /today /future /proxy /api /invite /signup /add_athlete /add_workout /add_set /plans /add_plan /get_contra /set_contra /pending"
     )
 
 @dp.message(Command("today"))
@@ -189,6 +221,8 @@ async def menu_callback(call: CallbackQuery):
         await add_set_cmd(call.message)
     elif action == "plans":
         await list_plans_cmd(call.message)
+    elif action == "invite":
+        await invite_cmd(call.message)
     await call.answer()
 
 @dp.callback_query(lambda c: c.data.startswith("set:"))
@@ -335,6 +369,44 @@ async def set_contra_cmd(message: Message):
     else:
         await message.answer("Ошибка")
 
+
+@dp.message(Command("invite"))
+async def invite_cmd(message: Message):
+    role = await _get_role(message.from_user)
+    if role not in ["coach", "superadmin"]:
+        await message.answer("Недостаточно прав")
+        return
+    parts = message.text.split(maxsplit=1)
+    payload = {}
+    if len(parts) == 2:
+        payload["role"] = parts[1]
+    headers = await get_auth_headers(message.from_user)
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.post("/api/v1/invites/", json=payload, headers=headers)
+        except httpx.RequestError:
+            await message.answer("Не удалось подключиться к серверу")
+            return
+    if resp.status_code != 200:
+        await message.answer(f"Ошибка: {resp.text}")
+        return
+    token = resp.json().get("invite_token")
+    bot_info = await bot.get_me()
+    link = f"https://t.me/{bot_info.username}?start={token}"
+    await message.answer(f"invite_token: {token}\n{link}")
+
+
+@dp.message(Command("signup"))
+async def signup_cmd(message: Message):
+    parts = message.text.split(maxsplit=1)
+    if len(parts) != 2:
+        await message.answer("Использование: /signup <token>")
+        return
+    if message.from_user.id in user_tokens:
+        await message.answer("Вы уже зарегистрированы")
+        return
+    await _signup_with_invite(message.from_user, parts[1], message)
+    await show_menu(message.chat.id, message.from_user)
 
 @dp.message(Command("pending"))
 async def pending_cmd(message: Message):

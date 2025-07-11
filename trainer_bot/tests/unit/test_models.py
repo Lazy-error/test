@@ -53,3 +53,16 @@ def test_workout_time_optional():
         assert w.time is None
 
 
+def test_athlete_is_active_flag():
+    with get_session() as session:
+        athlete = Athlete(name="Active")
+        session.add(athlete)
+        session.commit()
+        session.refresh(athlete)
+        assert athlete.is_active is True
+        athlete.is_active = False
+        session.commit()
+        session.refresh(athlete)
+        assert athlete.is_active is False
+
+

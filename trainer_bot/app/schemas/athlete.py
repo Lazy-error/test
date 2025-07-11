@@ -9,6 +9,7 @@ class AthleteCreate(AthleteBase):
 
 class Athlete(AthleteBase):
     id: int
+    is_active: bool
 
     class Config:
         orm_mode = True

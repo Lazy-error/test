@@ -38,3 +38,27 @@ def test_create_athlete():
     assert data["name"] == "John"
     assert data["contraindications"] == "asthma"
     assert "id" in data
+
+
+def test_deactivate_and_activate_athlete():
+    headers = _auth_headers()
+    payload = {"name": "Jane"}
+    res = client.post("/api/v1/athletes/", json=payload, headers=headers)
+    athlete_id = res.json()["id"]
+
+    res = client.post(f"/api/v1/athletes/{athlete_id}/deactivate", headers=headers)
+    assert res.status_code == 200
+    assert res.json()["is_active"] is False
+
+    res = client.get("/api/v1/athletes/", headers=headers)
+    assert all(a["id"] != athlete_id for a in res.json())
+
+    res = client.get("/api/v1/athletes/?include_inactive=true", headers=headers)
+    assert any(a["id"] == athlete_id for a in res.json())
+
+    res = client.post(f"/api/v1/athletes/{athlete_id}/activate", headers=headers)
+    assert res.status_code == 200
+    assert res.json()["is_active"] is True
+
+    res = client.get("/api/v1/athletes/", headers=headers)
+    assert any(a["id"] == athlete_id for a in res.json())

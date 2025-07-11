@@ -172,12 +172,15 @@ async def exercise_menu(message: Message):
     text = (
         "Управление упражнениями:\n"
         "/ex_list - список упражнений\n"
-        "/ex_add <name> <metric_type> - добавить\n"
-        "/ex_update <id> <name> <metric_type> - обновить\n"
+        "/ex_add - добавить\n"
+        "/ex_update <id> - обновить\n"
         "/ex_delete <id> - удалить\n"
         "/ex_get <id> - подробнее"
     )
-    await message.answer(text)
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[[InlineKeyboardButton(text="Новое упражнение", callback_data="cmd:ex_add")]]
+    )
+    await message.answer(text, reply_markup=kb)
 
 @dp.message(Command("today"))
 async def today_cmd(message: Message):
@@ -232,6 +235,8 @@ async def menu_callback(call: CallbackQuery):
         await invite_cmd(call.message)
     elif action == "exercise":
         await exercise_menu(call.message)
+    elif action == "ex_add":
+        await ex_add_cmd(call.message)
     await call.answer()
 
 @dp.callback_query(lambda c: c.data.startswith("set:"))
@@ -517,6 +522,10 @@ async def ex_list_cmd(message: Message):
 @dp.message(Command("ex_add"))
 async def ex_add_cmd(message: Message):
     parts = message.text.split(maxsplit=2)
+    if len(parts) == 1:
+        user_states[message.chat.id] = {"cmd": "add_exercise", "step": "name"}
+        await message.answer("Введите название упражнения:")
+        return
     if len(parts) < 3:
         await message.answer("Использование: /ex_add <name> <metric_type>")
         return
@@ -556,6 +565,14 @@ async def ex_get_cmd(message: Message):
 @dp.message(Command("ex_update"))
 async def ex_update_cmd(message: Message):
     parts = message.text.split(maxsplit=3)
+    if len(parts) == 2:
+        user_states[message.chat.id] = {
+            "cmd": "update_exercise",
+            "step": "name",
+            "exercise_id": parts[1],
+        }
+        await message.answer("Введите новое название или '-' для пропуска:")
+        return
     if len(parts) < 4:
         await message.answer("Использование: /ex_update <id> <name> <metric_type>")
         return
@@ -900,6 +917,57 @@ async def handle_flow(message: Message):
                     return
             if resp.status_code == 200:
                 await message.answer("План создан")
+            else:
+                await message.answer(f"Ошибка: {resp.text}")
+            user_states.pop(message.chat.id, None)
+            await show_menu(message.chat.id, message.from_user)
+    elif state["cmd"] == "add_exercise":
+        if state["step"] == "name":
+            state["name"] = message.text.strip()
+            state["step"] = "metric"
+            await message.answer("Введите тип метрики (strength/cardio):")
+        elif state["step"] == "metric":
+            payload = {"name": state["name"], "metric_type": message.text.strip()}
+            async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+                try:
+                    resp = await client.post("/api/v1/exercises/", json=payload, headers=headers)
+                except httpx.RequestError:
+                    await message.answer("Не удалось подключиться к серверу")
+                    user_states.pop(message.chat.id, None)
+                    await show_menu(message.chat.id, message.from_user)
+                    return
+            if resp.status_code == 200:
+                await message.answer("Упражнение создано")
+            else:
+                await message.answer(f"Ошибка: {resp.text}")
+            user_states.pop(message.chat.id, None)
+            await show_menu(message.chat.id, message.from_user)
+    elif state["cmd"] == "update_exercise":
+        if state["step"] == "name":
+            state["name"] = message.text.strip()
+            state["step"] = "metric"
+            await message.answer("Введите тип метрики или '-' для пропуска:")
+        elif state["step"] == "metric":
+            payload = {}
+            if state["name"] != "-":
+                payload["name"] = state["name"]
+            metric = message.text.strip()
+            if metric and metric != "-":
+                payload["metric_type"] = metric
+            async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+                try:
+                    resp = await client.patch(
+                        f"/api/v1/exercises/{state['exercise_id']}",
+                        json=payload,
+                        headers=headers,
+                    )
+                except httpx.RequestError:
+                    await message.answer("Не удалось подключиться к серверу")
+                    user_states.pop(message.chat.id, None)
+                    await show_menu(message.chat.id, message.from_user)
+                    return
+            if resp.status_code == 200:
+                await message.answer("Упражнение обновлено")
             else:
                 await message.answer(f"Ошибка: {resp.text}")
             user_states.pop(message.chat.id, None)

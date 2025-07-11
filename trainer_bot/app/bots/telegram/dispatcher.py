@@ -125,13 +125,43 @@ async def menu_cmd(message: Message):
 
 @dp.message(Command("help"))
 async def help_cmd(message: Message):
-    await message.answer(
-        "Доступные команды: /start /menu /help /today /future /invite /signup "
-        "/add_athlete /add_workout /add_set /plans /add_plan /get_contra /set_contra /pending "
-        "/messages /notifications /ex_list /ex_add /ex_get /ex_update /ex_delete "
-        "/workouts /workout_get /workout_update /workout_delete "
-        "/plan_get /plan_update /plan_delete /report_daily"
-    )
+    role = await _get_role(message.from_user)
+    commands = [
+        "/start",
+        "/menu",
+        "/help",
+        "/today",
+        "/future",
+        "/messages",
+        "/notifications",
+        "/signup",
+        "/report_daily",
+        "/workouts",
+        "/workout_get",
+        "/plan_get",
+        "/ex_list",
+        "/ex_get",
+    ]
+    if role in ["coach", "superadmin"]:
+        commands.extend([
+            "/add_athlete",
+            "/add_workout",
+            "/add_set",
+            "/plans",
+            "/add_plan",
+            "/set_contra",
+            "/get_contra",
+            "/invite",
+            "/pending",
+            "/ex_add",
+            "/ex_update",
+            "/ex_delete",
+            "/workout_update",
+            "/workout_delete",
+            "/plan_update",
+            "/plan_delete",
+        ])
+    await message.answer("Доступные команды: " + " ".join(commands))
 
 @dp.message(Command("today"))
 async def today_cmd(message: Message):

@@ -127,42 +127,45 @@ async def menu_cmd(message: Message):
 @dp.message(Command("help"))
 async def help_cmd(message: Message):
     role = await _get_role(message.from_user)
-    commands = [
-        "/start",
-        "/menu",
-        "/help",
-        "/today",
-        "/future",
-        "/messages",
-        "/notifications",
-        "/signup",
-        "/report_daily",
-        "/workouts",
-        "/workout_get",
-        "/plan_get",
-        "/ex_list",
-        "/ex_get",
-    ]
+    commands = {
+        "/start": "начать работу",
+        "/menu": "главное меню",
+        "/help": "список команд",
+        "/today": "сегодняшние тренировки",
+        "/future": "предстоящие тренировки",
+        "/messages": "сообщения",
+        "/notifications": "уведомления",
+        "/signup": "регистрация по инвайту",
+        "/report_daily": "отчёт за день",
+        "/workouts": "список тренировок",
+        "/workout_get": "подробности тренировки",
+        "/plan_get": "подробности плана",
+        "/ex_list": "список упражнений",
+        "/ex_get": "подробности упражнения",
+    }
     if role in ["coach", "superadmin"]:
-        commands.extend([
-            "/add_athlete",
-            "/add_workout",
-            "/add_set",
-            "/plans",
-            "/add_plan",
-            "/set_contra",
-            "/get_contra",
-            "/invite",
-            "/pending",
-            "/ex_add",
-            "/ex_update",
-            "/ex_delete",
-            "/workout_update",
-            "/workout_delete",
-            "/plan_update",
-            "/plan_delete",
-        ])
-    await message.answer("Доступные команды: " + " ".join(commands))
+        commands.update({
+            "/add_athlete": "добавить атлета",
+            "/add_workout": "добавить тренировку",
+            "/add_set": "добавить сет",
+            "/plans": "список планов",
+            "/add_plan": "добавить план",
+            "/set_contra": "задать противопоказания",
+            "/get_contra": "получить противопоказания",
+            "/invite": "создать инвайт",
+            "/pending": "ожидающие подтверждения",
+            "/ex_add": "добавить упражнение",
+            "/ex_update": "обновить упражнение",
+            "/ex_delete": "удалить упражнение",
+            "/workout_update": "обновить тренировку",
+            "/workout_delete": "удалить тренировку",
+            "/plan_update": "обновить план",
+            "/plan_delete": "удалить план",
+        })
+    text = "Доступные команды:\n" + "\n".join(
+        f"{cmd} - {desc}" for cmd, desc in commands.items()
+    )
+    await message.answer(text)
 
 
 async def exercise_menu(message: Message):

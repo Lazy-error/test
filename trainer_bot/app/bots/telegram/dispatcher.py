@@ -97,7 +97,7 @@ async def show_menu(chat_id: int, tg_user=None):
         [InlineKeyboardButton(text="Тренировки на сегодня", callback_data="cmd:today")],
         [InlineKeyboardButton(text="Предстоящие тренировки", callback_data="cmd:future")],
     ]
-    if role == "coach":
+    if role in ["coach", "superadmin"]:
         keyboard.extend([
             [InlineKeyboardButton(text="Добавить атлета", callback_data="cmd:add_athlete")],
             [InlineKeyboardButton(text="Добавить тренировку", callback_data="cmd:add_workout")],

@@ -56,6 +56,7 @@ class Set(Base):
     distance_km = Column(Float, nullable=True)
     duration_sec = Column(Integer, nullable=True)
     avg_hr = Column(Integer, nullable=True)
+    rest_sec = Column(Integer, nullable=True)
     status = Column(String, default="confirmed", nullable=False)
     order = Column(Integer, nullable=False)
 

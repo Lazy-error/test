@@ -62,6 +62,22 @@ def test_create_cardio_set():
     assert data["duration_sec"] == 1500
 
 
+def test_create_set_with_rest():
+    headers = _auth_headers()
+    res = client.post("/api/v1/exercises/", json={"name": "Pull", "metric_type": "strength"}, headers=headers)
+    ex_id = res.json()["id"]
+    res = client.post(
+        "/api/v1/workouts/",
+        json={"athlete_id": 1, "date": "2025-01-04", "type": "strength", "title": "R"},
+        headers=headers,
+    )
+    wid = res.json()["id"]
+    payload = {"workout_id": wid, "exercise_id": ex_id, "weight": 60, "reps": 5, "order": 1, "rest_sec": 90}
+    res = client.post("/api/v1/sets/", json=payload, headers=headers)
+    assert res.status_code == 200
+    assert res.json()["rest_sec"] == 90
+
+
 def test_pending_edit_by_athlete_and_confirm():
     coach_headers = _auth_headers()
     ex = client.post("/api/v1/exercises/", json={"name": "Press", "metric_type": "strength"}, headers=coach_headers)

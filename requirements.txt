@@ -10,3 +10,5 @@ pytest-cov
 ruff
 pytz
 APScheduler
+testing.postgresql
+psycopg2-binary

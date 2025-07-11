@@ -11,6 +11,7 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 export BOT_TOKEN="your-telegram-token"
+export DATABASE_URL="postgresql://trainer:trainer@localhost:5432/trainer"
 uvicorn trainer_bot.app.main:app --reload
 ```
 
@@ -21,46 +22,32 @@ python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
 set BOT_TOKEN="your-telegram-token"
+set DATABASE_URL="postgresql://trainer:trainer@localhost:5432/trainer"
 uvicorn trainer_bot.app.main:app --reload
 ```
 
-### Docker (optional)
+### Docker
 
 ```bash
 docker-compose up --build
 ```
-The compose file expects `BOT_TOKEN` to be set in your environment so the
-backend can authorize Telegram users.
+This command starts PostgreSQL, Redis and the FastAPI app. Set `BOT_TOKEN` in
+your environment so the backend can authorize Telegram users before running.
 
-### PostgreSQL with Docker Compose
+### PostgreSQL
 
-The default `DATABASE_URL` expects a PostgreSQL server. To start the bundled
-database using Docker Compose:
+The application requires a running PostgreSQL server. The default
+`DATABASE_URL` is `postgresql://trainer:trainer@localhost:5432/trainer`. If you
+use Docker Compose, the database is created automatically. Otherwise make sure
+the `trainer` database and user exist before starting the app.
 
-```bash
-docker-compose up -d db
-```
-
-This launches a PostgreSQL instance listening on port `5432` with the
-`trainer/trainer` user/password combination. The database name is `trainer`.
-
-To use TimescaleDB features, enable the extension after the container starts:
+To enable TimescaleDB features in the Docker container run:
 
 ```bash
 docker exec -it test-db-1 psql -U trainer -d trainer -c "CREATE EXTENSION IF NOT EXISTS timescaledb"
 ```
 
-Replace `test-db-1` with the name of your running container if it differs.
-
-Before starting the backend, export the same `BOT_TOKEN` that the bot uses so
-`/api/v1/auth/bot` can authenticate:
-
-```bash
-export BOT_TOKEN="your-telegram-token"
-uvicorn trainer_bot.app.main:app --reload
-```
-
-Open <http://localhost:8000/docs> for the Swagger UI.
+Open <http://localhost:8000/docs> for the Swagger UI once the service is running.
 
 ### Running the Telegram bot
 

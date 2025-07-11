@@ -73,6 +73,12 @@ identifier), the workout date in `YYYY-MM-DD` format, a type such as
 `strength` or `cardio`, and a short title. After the object is created the
 bot returns to the main menu.
 
+Exercises can also be managed interactively. Choose **Новое упражнение** in
+the *Упражнения* menu or send `/ex_add` without arguments. The bot will ask for
+the exercise name followed by its metric type (`strength` or `cardio`).
+To update an existing exercise send `/ex_update <id>` and follow the prompts to
+change its name and metric type.
+
 ### Authorizing via Telegram
 
 At the first interaction the bot requests an API token from the backend by

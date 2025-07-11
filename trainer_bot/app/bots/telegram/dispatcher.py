@@ -102,6 +102,7 @@ async def show_menu(chat_id: int, tg_user=None):
             [InlineKeyboardButton(text="Добавить атлета", callback_data="cmd:add_athlete")],
             [InlineKeyboardButton(text="Добавить тренировку", callback_data="cmd:add_workout")],
             [InlineKeyboardButton(text="Добавить сет", callback_data="cmd:add_set")],
+            [InlineKeyboardButton(text="Упражнения", callback_data="cmd:exercise")],
             [InlineKeyboardButton(text="Планы", callback_data="cmd:plans")],
             [InlineKeyboardButton(text="Инвайт", callback_data="cmd:invite")],
         ])
@@ -163,6 +164,18 @@ async def help_cmd(message: Message):
         ])
     await message.answer("Доступные команды: " + " ".join(commands))
 
+
+async def exercise_menu(message: Message):
+    text = (
+        "Управление упражнениями:\n"
+        "/ex_list - список упражнений\n"
+        "/ex_add <name> <metric_type> - добавить\n"
+        "/ex_update <id> <name> <metric_type> - обновить\n"
+        "/ex_delete <id> - удалить\n"
+        "/ex_get <id> - подробнее"
+    )
+    await message.answer(text)
+
 @dp.message(Command("today"))
 async def today_cmd(message: Message):
     today = date.today().isoformat()
@@ -214,6 +227,8 @@ async def menu_callback(call: CallbackQuery):
         await list_plans_cmd(call.message)
     elif action == "invite":
         await invite_cmd(call.message)
+    elif action == "exercise":
+        await exercise_menu(call.message)
     await call.answer()
 
 @dp.callback_query(lambda c: c.data.startswith("set:"))

@@ -48,15 +48,15 @@ async def get_auth_headers(tg_user) -> Dict[str, str]:
     return {}
 
 
-async def _get_role(tg_user) -> str:
+async def _get_role(tg_user) -> str | None:
     headers = await get_auth_headers(tg_user)
     if not headers:
-        return "athlete"
+        return None
     async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
         try:
             resp = await client.get("/api/v1/auth/users/me", headers=headers)
         except httpx.RequestError:
-            return "athlete"
+            return None
     if resp.status_code == 200:
         return resp.json().get("role", "athlete")
     return "athlete"
@@ -364,6 +364,9 @@ async def set_contra_cmd(message: Message):
 @dp.message(Command("invite"))
 async def invite_cmd(message: Message):
     role = await _get_role(message.from_user)
+    if role is None:
+        await message.answer("Не удалось подключиться к серверу")
+        return
     if role not in ["coach", "superadmin"]:
         await message.answer("Недостаточно прав")
         return

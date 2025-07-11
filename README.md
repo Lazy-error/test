@@ -96,6 +96,19 @@ token is issued a new user with the `athlete` role is created in the database.
 The available roles are `coach`, `athlete` and `superadmin`. Any endpoint that
 requires a different role will return `403` until the user's role is updated.
 
+### Inviting users
+
+Coaches can generate invitation links for new athletes with:
+
+```text
+/invite [role]
+```
+
+The bot responds with an `invite_token` and a deep link like
+`https://t.me/<botname>?start=<token>`. A new user can follow this link or send
+`/signup <token>` to register. The bot submits the token to `/api/v1/invites/bot`
+and stores the received `access_token` for future requests.
+
 ### Using API commands via Telegram
 
 The bot exposes an `/api` command so the trainer can call any backend endpoint

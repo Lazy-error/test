@@ -51,3 +51,25 @@ def test_help_cmd_coach(monkeypatch):
         "/plan_update", "/plan_delete",
     ])
     assert msg.answers == [expected]
+
+
+def test_show_menu_superadmin(monkeypatch):
+    async def fake_role(user):
+        return "superadmin"
+    monkeypatch.setattr(dispatcher, "_get_role", fake_role)
+
+    captured = {}
+
+    async def fake_send_message(chat_id, text, reply_markup=None):
+        captured["chat_id"] = chat_id
+        captured["text"] = text
+        captured["markup"] = reply_markup
+
+    monkeypatch.setattr(dispatcher.bot, "send_message", fake_send_message)
+
+    run(dispatcher.show_menu(1, DummyUser()))
+
+    buttons = [btn.text for row in captured["markup"].inline_keyboard for btn in row]
+
+    assert "Добавить атлета" in buttons
+    assert "Инвайт" in buttons

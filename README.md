@@ -91,29 +91,11 @@ Coaches can generate invitation links for new athletes with:
 /invite [role]
 ```
 
+
 The bot responds with an `invite_token` and a deep link like
 `https://t.me/<botname>?start=<token>`. A new user can follow this link or send
 `/signup <token>` to register. The bot submits the token to `/api/v1/invites/bot`
 and stores the received `access_token` for future requests.
-
-### Using API commands via Telegram
-
-The bot exposes an `/api` command so the trainer can call any backend endpoint
-directly from Telegram. Usage:
-
-```text
-/api <method> <path> [json]
-```
-
-Example:
-
-```text
-/api get /api/v1/workouts
-```
-
-By default the bot obtains an access token automatically using your Telegram
-account through the `/api/v1/auth/bot` endpoint. You can override the token by
-setting `TRAINER_API_TOKEN` with a valid bearer token.
 
 ### Time zone
 

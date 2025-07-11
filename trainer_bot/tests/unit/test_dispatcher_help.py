@@ -73,3 +73,4 @@ def test_show_menu_superadmin(monkeypatch):
 
     assert "Добавить атлета" in buttons
     assert "Инвайт" in buttons
+    assert "Упражнения" in buttons

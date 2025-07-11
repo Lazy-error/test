@@ -127,7 +127,11 @@ async def menu_cmd(message: Message):
 @dp.message(Command("help"))
 async def help_cmd(message: Message):
     await message.answer(
-        "Доступные команды: /start /menu /help /today /future /proxy /invite /signup /add_athlete /add_workout /add_set /plans /add_plan /get_contra /set_contra /pending"
+        "Доступные команды: /start /menu /help /today /future /proxy /invite /signup "
+        "/add_athlete /add_workout /add_set /plans /add_plan /get_contra /set_contra /pending "
+        "/messages /notifications /ex_list /ex_add /ex_get /ex_update /ex_delete "
+        "/workouts /workout_get /workout_update /workout_delete "
+        "/plan_get /plan_update /plan_delete /report_daily"
     )
 
 @dp.message(Command("today"))
@@ -403,6 +407,316 @@ async def pending_cmd(message: Message):
             InlineKeyboardButton(text="Отклонить", callback_data=f"conf:{s['id']}:rejected")
         ]])
         await message.answer(f"set {s['id']}", reply_markup=kb)
+
+
+@dp.message(Command("messages"))
+async def messages_cmd(message: Message):
+    parts = message.text.split(maxsplit=2)
+    headers = await get_auth_headers(message.from_user)
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        if len(parts) >= 3:
+            me = await client.get("/api/v1/auth/users/me", headers=headers)
+            if me.status_code != 200:
+                await message.answer("Ошибка аутентификации")
+                return
+            payload = {
+                "sender_id": me.json().get("id"),
+                "receiver_id": int(parts[1]),
+                "text": parts[2],
+            }
+            try:
+                resp = await client.post("/api/v1/messages/", json=payload, headers=headers)
+            except httpx.RequestError:
+                await message.answer("Ошибка соединения")
+                return
+            if resp.status_code == 200:
+                await message.answer("Сообщение отправлено")
+            else:
+                await message.answer(f"Ошибка: {resp.text}")
+        else:
+            try:
+                resp = await client.get("/api/v1/messages/", headers=headers)
+            except httpx.RequestError:
+                await message.answer("Ошибка соединения")
+                return
+            if resp.status_code == 200 and resp.json():
+                msgs = resp.json()
+                text = "\n".join(f"{m['id']}: {m['text']}" for m in msgs)
+                await message.answer(text)
+            else:
+                await message.answer("Сообщений нет")
+
+
+@dp.message(Command("notifications"))
+async def notifications_cmd(message: Message):
+    headers = await get_auth_headers(message.from_user)
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.get("/api/v1/notifications/", headers=headers)
+        except httpx.RequestError:
+            await message.answer("Ошибка соединения")
+            return
+    if resp.status_code == 200 and resp.json():
+        text = "\n".join(f"{n['id']}: {n['text']}" for n in resp.json())
+        await message.answer(text)
+    else:
+        await message.answer("Уведомлений нет")
+
+
+@dp.message(Command("ex_list"))
+async def ex_list_cmd(message: Message):
+    headers = await get_auth_headers(message.from_user)
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.get("/api/v1/exercises/", headers=headers)
+        except httpx.RequestError:
+            await message.answer("Ошибка соединения")
+            return
+    if resp.status_code == 200 and resp.json():
+        text = "\n".join(f"{e['id']}: {e['name']}" for e in resp.json())
+        await message.answer(text)
+    else:
+        await message.answer("Упражнений нет")
+
+
+@dp.message(Command("ex_add"))
+async def ex_add_cmd(message: Message):
+    parts = message.text.split(maxsplit=2)
+    if len(parts) < 3:
+        await message.answer("Использование: /ex_add <name> <metric_type>")
+        return
+    payload = {"name": parts[1], "metric_type": parts[2]}
+    headers = await get_auth_headers(message.from_user)
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.post("/api/v1/exercises/", json=payload, headers=headers)
+        except httpx.RequestError:
+            await message.answer("Ошибка соединения")
+            return
+    if resp.status_code == 200:
+        await message.answer(f"Создано упражнение {resp.json().get('id')}")
+    else:
+        await message.answer(f"Ошибка: {resp.text}")
+
+
+@dp.message(Command("ex_get"))
+async def ex_get_cmd(message: Message):
+    parts = message.text.split(maxsplit=1)
+    if len(parts) != 2:
+        await message.answer("Использование: /ex_get <id>")
+        return
+    headers = await get_auth_headers(message.from_user)
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.get(f"/api/v1/exercises/{parts[1]}", headers=headers)
+        except httpx.RequestError:
+            await message.answer("Ошибка соединения")
+            return
+    if resp.status_code == 200:
+        await message.answer(json.dumps(resp.json(), ensure_ascii=False))
+    else:
+        await message.answer("Не найдено")
+
+
+@dp.message(Command("ex_update"))
+async def ex_update_cmd(message: Message):
+    parts = message.text.split(maxsplit=3)
+    if len(parts) < 4:
+        await message.answer("Использование: /ex_update <id> <name> <metric_type>")
+        return
+    ex_id = parts[1]
+    payload = {"name": parts[2], "metric_type": parts[3]}
+    headers = await get_auth_headers(message.from_user)
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.patch(f"/api/v1/exercises/{ex_id}", json=payload, headers=headers)
+        except httpx.RequestError:
+            await message.answer("Ошибка соединения")
+            return
+    if resp.status_code == 200:
+        await message.answer("Упражнение обновлено")
+    else:
+        await message.answer(f"Ошибка: {resp.text}")
+
+
+@dp.message(Command("ex_delete"))
+async def ex_delete_cmd(message: Message):
+    parts = message.text.split(maxsplit=1)
+    if len(parts) != 2:
+        await message.answer("Использование: /ex_delete <id>")
+        return
+    headers = await get_auth_headers(message.from_user)
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.delete(f"/api/v1/exercises/{parts[1]}", headers=headers)
+        except httpx.RequestError:
+            await message.answer("Ошибка соединения")
+            return
+    if resp.status_code == 200:
+        await message.answer("Удалено")
+    else:
+        await message.answer(f"Ошибка: {resp.text}")
+
+
+@dp.message(Command("workouts"))
+async def workouts_cmd(message: Message):
+    headers = await get_auth_headers(message.from_user)
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.get("/api/v1/workouts/", headers=headers)
+        except httpx.RequestError:
+            await message.answer("Ошибка соединения")
+            return
+    if resp.status_code == 200 and resp.json():
+        text = "\n".join(f"{w['id']}: {w['title']}" for w in resp.json())
+        await message.answer(text)
+    else:
+        await message.answer("Тренировок нет")
+
+
+@dp.message(Command("workout_get"))
+async def workout_get_cmd(message: Message):
+    parts = message.text.split(maxsplit=1)
+    if len(parts) != 2:
+        await message.answer("Использование: /workout_get <id>")
+        return
+    headers = await get_auth_headers(message.from_user)
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.get(f"/api/v1/workouts/{parts[1]}", headers=headers)
+        except httpx.RequestError:
+            await message.answer("Ошибка соединения")
+            return
+    if resp.status_code == 200:
+        await message.answer(json.dumps(resp.json(), ensure_ascii=False))
+    else:
+        await message.answer("Не найдено")
+
+
+@dp.message(Command("workout_update"))
+async def workout_update_cmd(message: Message):
+    parts = message.text.split(maxsplit=2)
+    if len(parts) < 3:
+        await message.answer("Использование: /workout_update <id> <json>")
+        return
+    wid = parts[1]
+    try:
+        payload = json.loads(parts[2])
+    except Exception:
+        await message.answer("Неверный формат JSON")
+        return
+    headers = await get_auth_headers(message.from_user)
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.patch(f"/api/v1/workouts/{wid}", json=payload, headers=headers)
+        except httpx.RequestError:
+            await message.answer("Ошибка соединения")
+            return
+    if resp.status_code == 200:
+        await message.answer("Тренировка обновлена")
+    else:
+        await message.answer(f"Ошибка: {resp.text}")
+
+
+@dp.message(Command("workout_delete"))
+async def workout_delete_cmd(message: Message):
+    parts = message.text.split(maxsplit=1)
+    if len(parts) != 2:
+        await message.answer("Использование: /workout_delete <id>")
+        return
+    headers = await get_auth_headers(message.from_user)
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.delete(f"/api/v1/workouts/{parts[1]}", headers=headers)
+        except httpx.RequestError:
+            await message.answer("Ошибка соединения")
+            return
+    if resp.status_code == 200:
+        await message.answer("Удалено")
+    else:
+        await message.answer(f"Ошибка: {resp.text}")
+
+
+@dp.message(Command("plan_get"))
+async def plan_get_cmd(message: Message):
+    parts = message.text.split(maxsplit=1)
+    if len(parts) != 2:
+        await message.answer("Использование: /plan_get <id>")
+        return
+    headers = await get_auth_headers(message.from_user)
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.get(f"/api/v1/plans/{parts[1]}", headers=headers)
+        except httpx.RequestError:
+            await message.answer("Ошибка соединения")
+            return
+    if resp.status_code == 200:
+        await message.answer(json.dumps(resp.json(), ensure_ascii=False))
+    else:
+        await message.answer("Не найдено")
+
+
+@dp.message(Command("plan_update"))
+async def plan_update_cmd(message: Message):
+    parts = message.text.split(maxsplit=2)
+    if len(parts) < 3:
+        await message.answer("Использование: /plan_update <id> <json>")
+        return
+    pid = parts[1]
+    try:
+        payload = json.loads(parts[2])
+    except Exception:
+        await message.answer("Неверный формат JSON")
+        return
+    headers = await get_auth_headers(message.from_user)
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.patch(f"/api/v1/plans/{pid}", json=payload, headers=headers)
+        except httpx.RequestError:
+            await message.answer("Ошибка соединения")
+            return
+    if resp.status_code == 200:
+        await message.answer("План обновлён")
+    else:
+        await message.answer(f"Ошибка: {resp.text}")
+
+
+@dp.message(Command("plan_delete"))
+async def plan_delete_cmd(message: Message):
+    parts = message.text.split(maxsplit=1)
+    if len(parts) != 2:
+        await message.answer("Использование: /plan_delete <id>")
+        return
+    headers = await get_auth_headers(message.from_user)
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.delete(f"/api/v1/plans/{parts[1]}", headers=headers)
+        except httpx.RequestError:
+            await message.answer("Ошибка соединения")
+            return
+    if resp.status_code == 200:
+        await message.answer("Удалено")
+    else:
+        await message.answer(f"Ошибка: {resp.text}")
+
+
+@dp.message(Command("report_daily"))
+async def report_daily_cmd(message: Message):
+    parts = message.text.split(maxsplit=1)
+    if len(parts) != 2:
+        await message.answer("Использование: /report_daily <YYYY-MM-DD>")
+        return
+    headers = await get_auth_headers(message.from_user)
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.get("/api/v1/reports/daily", params={"date": parts[1]}, headers=headers)
+        except httpx.RequestError:
+            await message.answer("Ошибка соединения")
+            return
+    if resp.status_code == 200:
+        await message.answer(json.dumps(resp.json(), ensure_ascii=False))
+    else:
+        await message.answer(f"Ошибка: {resp.text}")
 
 
 @dp.message()

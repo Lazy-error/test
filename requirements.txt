@@ -12,3 +12,4 @@ pytz
 APScheduler
 testing.postgresql
 psycopg2-binary
+alembic

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, Time, Text, Float, ForeignKey, DateTime, Boolean
+from sqlalchemy import Column, Integer, BigInteger, String, Date, Time, Text, Float, ForeignKey, DateTime, Boolean
 from sqlalchemy.orm import relationship
 import datetime
 
@@ -87,7 +87,7 @@ class Notification(Base):
 class User(Base):
     __tablename__ = 'users'
     id = Column(Integer, primary_key=True)
-    telegram_id = Column(Integer, unique=True, nullable=False)
+    telegram_id = Column(BigInteger, unique=True, nullable=False)
     first_name = Column(String)
     last_name = Column(String)
     username = Column(String)

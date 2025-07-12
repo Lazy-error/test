@@ -49,6 +49,19 @@ docker exec -it test-db-1 psql -U trainer -d trainer -c "CREATE EXTENSION IF NOT
 
 Open <http://localhost:8000/docs> for the Swagger UI once the service is running.
 
+### Database migrations
+
+The project uses **Alembic** for schema migrations. After setting the
+`DATABASE_URL` environment variable you can upgrade the database to the latest
+version with:
+
+```bash
+alembic upgrade head
+```
+
+Run this command from the repository root so `alembic.ini` is found
+automatically.
+
 ### Running the Telegram bot
 
 The repository includes a minimal Telegram bot that responds to `/start`.

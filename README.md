@@ -110,12 +110,22 @@ is invoked only after a `/start` or `/signup` command.
 
 ### Inviting users
 
-Coaches can generate invitation links for new athletes with:
+Coaches can generate invitation links for new users:
 
 ```text
 /invite [role]
 ```
 
+The optional `role` argument may be `athlete` or `coach`. If you omit it, the
+command defaults to an athlete invite, so simply sending `/invite` is equivalent
+to `/invite athlete`. For example, to invite a new coach use:
+
+```text
+/invite coach
+```
+
+When no role is provided in Telegram, the bot shows an interactive menu so you
+can pick the desired role.
 
 The bot responds with an `invite_token` and a deep link like
 `https://t.me/<botname>?start=<token>`. A new user can follow this link or send

@@ -102,6 +102,12 @@ token is issued a new user with the `athlete` role is created in the database.
 The available roles are `coach`, `athlete` and `superadmin`. Any endpoint that
 requires a different role will return `403` until the user's role is updated.
 
+When a command that requires authentication is issued before `/start` or
+`/signup`, the bot still calls `/api/v1/auth/bot`. If the `telegram_id` is not
+known the backend automatically registers a new athlete and returns an access
+token. To keep registration explicit you can change the bot so `get_auth_headers`
+is invoked only after a `/start` or `/signup` command.
+
 ### Inviting users
 
 Coaches can generate invitation links for new athletes with:

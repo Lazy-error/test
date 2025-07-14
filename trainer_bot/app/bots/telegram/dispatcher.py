@@ -22,6 +22,14 @@ user_tokens: Dict[int, str] = {}
 
 
 async def get_auth_headers(tg_user) -> Dict[str, str]:
+    """Return API auth headers for a Telegram user.
+
+    The first call for a given ``tg_user`` sends their profile to
+    ``/api/v1/auth/bot``. The backend creates a user if the ``telegram_id``
+    is unknown and returns an access token. Consequently any command that
+    needs authentication will automatically register the user when issued
+    without running ``/start`` or ``/signup`` first.
+    """
     token = os.getenv("TRAINER_API_TOKEN")
     if token:
         return {"Authorization": f"Bearer {token}"}

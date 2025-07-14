@@ -295,6 +295,38 @@ async def exercise_pick(call: CallbackQuery):
     await call.answer()
 
 
+@dp.callback_query(lambda c: c.data.startswith("invite_role:"))
+async def invite_role(call: CallbackQuery):
+    role = call.data.split(":", 1)[1]
+    state = user_states.get(call.message.chat.id)
+    if not state or state.get("cmd") != "invite":
+        await call.answer()
+        return
+    headers = await get_auth_headers(call.from_user)
+    async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
+        try:
+            resp = await client.post("/api/v1/invites/", json={"role": role}, headers=headers)
+        except httpx.RequestError:
+            await call.message.answer("Не удалось подключиться к серверу")
+            user_states.pop(call.message.chat.id, None)
+            await show_menu(call.message.chat.id, call.from_user)
+            await call.answer()
+            return
+    if resp.status_code != 200:
+        await call.message.answer(f"Ошибка: {resp.text}")
+        user_states.pop(call.message.chat.id, None)
+        await show_menu(call.message.chat.id, call.from_user)
+        await call.answer()
+        return
+    token = resp.json().get("invite_token")
+    bot_info = await bot.get_me()
+    link = f"https://t.me/{bot_info.username}?start={token}"
+    await call.message.answer(f"invite_token: {token}\n{link}")
+    user_states.pop(call.message.chat.id, None)
+    await show_menu(call.message.chat.id, call.from_user)
+    await call.answer()
+
+
 @dp.message(Command("add_athlete"))
 async def add_athlete_cmd(message: Message):
     user_states[message.chat.id] = {"cmd": "add_athlete", "step": "name"}
@@ -394,9 +426,18 @@ async def invite_cmd(message: Message):
         await message.answer("Недостаточно прав")
         return
     parts = message.text.split(maxsplit=1)
-    payload = {}
-    if len(parts) == 2:
-        payload["role"] = parts[1]
+    if len(parts) == 1:
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="Атлет", callback_data="invite_role:athlete")],
+                [InlineKeyboardButton(text="Тренер", callback_data="invite_role:coach")],
+            ]
+        )
+        user_states[message.chat.id] = {"cmd": "invite", "step": "role"}
+        await message.answer("Выберите роль:", reply_markup=kb)
+        return
+
+    payload = {"role": parts[1]}
     headers = await get_auth_headers(message.from_user)
     async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
         try:

@@ -23,11 +23,19 @@ try:
 except Exception as exc:  # pragma: no cover - depends on environment
     _POSTGRES = None
     _POSTGRES_ERROR = str(exc)
+    os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+    from trainer_bot.app.services import db as db_module
+    db_module.engine = create_engine("sqlite:///:memory:")
+    db_module.SessionLocal = sessionmaker(
+        autocommit=False, autoflush=False, bind=db_module.engine
+    )
+    db_module.Base.metadata.create_all(bind=db_module.engine)
 
 
 def pytest_configure(config):
     if _POSTGRES is None:
-        pytest.skip(f"PostgreSQL not available: {_POSTGRES_ERROR}", allow_module_level=True)
+        # running with sqlite fallback
+        pass
 
 
 def pytest_unconfigure(config):

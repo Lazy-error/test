@@ -1,3 +1,5 @@
+import os
+os.environ.setdefault("BOT_TOKEN", "123456:TESTTOKEN")
 import asyncio
 from trainer_bot.app.bots.telegram import dispatcher
 
